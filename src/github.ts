@@ -12,7 +12,10 @@ const API_ROOT = "https://api.github.com";
 export type ImportOptions = {
   prs: number;
   repository: GitHubRepository;
+  fetcher?: HttpFetcher;
 };
+
+export type HttpFetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
 export class GitHubApiError extends Error {
   constructor(
@@ -28,10 +31,11 @@ export class GitHubApiError extends Error {
 export async function importRecentPullRequests(
   options: ImportOptions,
 ): Promise<RawPullRequestBundle[]> {
-  const prs = clampPerPage(options.prs);
-  const list = await requestJson<GitHubPullRequest[]>(
-    `/repos/${options.repository.owner}/${options.repository.repo}/pulls?state=all&sort=updated&direction=desc&per_page=${prs}`,
-  );
+  const prs = validatePrCount(options.prs);
+  const context: RequestContext = {
+    fetcher: options.fetcher ?? fetch,
+  };
+  const list = await fetchPullRequestList(options.repository, prs, context);
 
   const importedAt = new Date().toISOString();
   const bundles: RawPullRequestBundle[] = [];
@@ -41,15 +45,19 @@ export async function importRecentPullRequests(
     const [pullRequest, issueComments, reviewComments, reviews] = await Promise.all([
       requestJson<GitHubPullRequest>(
         `/repos/${options.repository.owner}/${options.repository.repo}/pulls/${number}`,
+        context,
       ),
       requestAllPages<GitHubIssueComment>(
         `/repos/${options.repository.owner}/${options.repository.repo}/issues/${number}/comments?per_page=100`,
+        context,
       ),
       requestAllPages<GitHubReviewComment>(
         `/repos/${options.repository.owner}/${options.repository.repo}/pulls/${number}/comments?per_page=100`,
+        context,
       ),
       requestAllPages<GitHubReview>(
         `/repos/${options.repository.owner}/${options.repository.repo}/pulls/${number}/reviews?per_page=100`,
+        context,
       ),
     ]);
 
@@ -66,12 +74,42 @@ export async function importRecentPullRequests(
   return bundles;
 }
 
-async function requestAllPages<T>(path: string): Promise<T[]> {
+type RequestContext = {
+  fetcher: HttpFetcher;
+};
+
+async function fetchPullRequestList(
+  repository: GitHubRepository,
+  requestedCount: number,
+  context: RequestContext,
+): Promise<GitHubPullRequest[]> {
+  const results: GitHubPullRequest[] = [];
+  let page = 1;
+
+  while (results.length < requestedCount) {
+    const remaining = requestedCount - results.length;
+    const perPage = Math.min(remaining, 100);
+    const pullRequests = await requestJson<GitHubPullRequest[]>(
+      `/repos/${repository.owner}/${repository.repo}/pulls?state=all&sort=updated&direction=desc&per_page=${perPage}&page=${page}`,
+      context,
+    );
+
+    results.push(...pullRequests);
+    if (pullRequests.length < perPage) {
+      break;
+    }
+    page += 1;
+  }
+
+  return results.slice(0, requestedCount);
+}
+
+async function requestAllPages<T>(path: string, context: RequestContext): Promise<T[]> {
   const results: T[] = [];
   let nextUrl: string | null = toApiUrl(path);
 
   while (nextUrl) {
-    const response = await request(nextUrl);
+    const response = await request(nextUrl, context);
     const body = (await response.json()) as T[];
     results.push(...body);
     nextUrl = parseNextLink(response.headers.get("link"));
@@ -80,12 +118,12 @@ async function requestAllPages<T>(path: string): Promise<T[]> {
   return results;
 }
 
-async function requestJson<T>(path: string): Promise<T> {
-  const response = await request(toApiUrl(path));
+async function requestJson<T>(path: string, context: RequestContext): Promise<T> {
+  const response = await request(toApiUrl(path), context);
   return (await response.json()) as T;
 }
 
-async function request(url: string): Promise<Response> {
+async function request(url: string, context: RequestContext): Promise<Response> {
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
     "user-agent": "traceback-cli",
@@ -96,7 +134,7 @@ async function request(url: string): Promise<Response> {
     headers.authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { headers });
+  const response = await context.fetcher(url, { headers });
   if (!response.ok) {
     throw new GitHubApiError(await formatGitHubError(response), response.status, url);
   }
@@ -126,11 +164,11 @@ function parseNextLink(linkHeader: string | null): string | null {
   return null;
 }
 
-function clampPerPage(prs: number): number {
+function validatePrCount(prs: number): number {
   if (!Number.isInteger(prs) || prs < 1) {
     throw new Error("--prs must be a positive integer.");
   }
-  return Math.min(prs, 100);
+  return prs;
 }
 
 async function formatGitHubError(response: Response): Promise<string> {
