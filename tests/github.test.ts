@@ -57,7 +57,7 @@ describe("importRecentPullRequests", () => {
     expect(bundles).toHaveLength(102);
     expect(requestedUrls.filter((url) => url.includes("/pulls?"))).toEqual([
       "https://api.github.com/repos/acme/widgets/pulls?state=all&sort=updated&direction=desc&per_page=100&page=1",
-      "https://api.github.com/repos/acme/widgets/pulls?state=all&sort=updated&direction=desc&per_page=2&page=2",
+      "https://api.github.com/repos/acme/widgets/pulls?state=all&sort=updated&direction=desc&per_page=100&page=2",
     ]);
   });
 });

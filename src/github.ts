@@ -87,8 +87,7 @@ async function fetchPullRequestList(
   let page = 1;
 
   while (results.length < requestedCount) {
-    const remaining = requestedCount - results.length;
-    const perPage = Math.min(remaining, 100);
+    const perPage = 100;
     const pullRequests = await requestJson<GitHubPullRequest[]>(
       `/repos/${repository.owner}/${repository.repo}/pulls?state=all&sort=updated&direction=desc&per_page=${perPage}&page=${page}`,
       context,
