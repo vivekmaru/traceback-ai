@@ -184,7 +184,7 @@ async function formatGitHubError(response: Response): Promise<string> {
   }
 
   if (response.status === 404) {
-    return `GitHub API request failed with 404.${detail} Check that origin points to a GitHub repository you can access.`;
+    return `GitHub API returned 404.${detail} If this is a private repo, configure GITHUB_TOKEN or GH_TOKEN with a token that can access the repository. Also check that origin points to the intended GitHub repository.`;
   }
 
   return `GitHub API request failed with ${response.status}.${detail}`;

@@ -79,6 +79,10 @@ export function generateFailureCandidatesReport(candidates: FailureCandidate[]):
     "",
     ...renderTopPrs(candidates),
     "",
+    "## Potential Noise",
+    "",
+    ...renderPotentialNoise(candidates),
+    "",
     "## Candidate List",
     "",
     ...renderCandidateList(candidates),
@@ -137,6 +141,25 @@ function renderCandidateList(candidates: FailureCandidate[]): string[] {
     `- Evidence: ${escapeMarkdown(candidate.evidenceExcerpt)}`,
     "",
   ]);
+}
+
+function renderPotentialNoise(candidates: FailureCandidate[]): string[] {
+  const noisyCandidates = candidates.filter(
+    (candidate) => candidate.sourceType === "pr_body" && candidate.confidence === "low",
+  );
+
+  if (noisyCandidates.length === 0) {
+    return ["No low-confidence PR body candidates found."];
+  }
+
+  return [
+    "Low-confidence PR body candidates are useful signals, but they are more likely to need manual review than review-comment candidates.",
+    "",
+    ...noisyCandidates.map(
+      (candidate) =>
+        `- ${escapeMarkdown(candidate.extractedTitle)} ([#${candidate.sourcePrNumber}](${candidate.sourcePrUrl})) - ${candidate.candidateCategory}`,
+    ),
+  ];
 }
 
 function renderRecordRow(record: NormalizedPullRequestRecord): string {

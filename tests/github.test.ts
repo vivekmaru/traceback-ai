@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { importRecentPullRequests } from "../src/github";
+import { GitHubApiError, importRecentPullRequests } from "../src/github";
 import type { GitHubPullRequest } from "../src/types";
 
 function pr(number: number): GitHubPullRequest {
@@ -59,5 +59,36 @@ describe("importRecentPullRequests", () => {
       "https://api.github.com/repos/acme/widgets/pulls?state=all&sort=updated&direction=desc&per_page=100&page=1",
       "https://api.github.com/repos/acme/widgets/pulls?state=all&sort=updated&direction=desc&per_page=100&page=2",
     ]);
+  });
+
+  test("404 errors mention private repository token access", async () => {
+    const fetcher = async () =>
+      Response.json({ message: "Not Found" }, { status: 404, statusText: "Not Found" });
+
+    await expect(
+      importRecentPullRequests({
+        prs: 1,
+        repository: {
+          owner: "acme",
+          repo: "private-widgets",
+          remoteUrl: "https://github.com/acme/private-widgets.git",
+        },
+        fetcher,
+      }),
+    ).rejects.toThrow(GitHubApiError);
+
+    await expect(
+      importRecentPullRequests({
+        prs: 1,
+        repository: {
+          owner: "acme",
+          repo: "private-widgets",
+          remoteUrl: "https://github.com/acme/private-widgets.git",
+        },
+        fetcher,
+      }),
+    ).rejects.toThrow(
+      "If this is a private repo, configure GITHUB_TOKEN or GH_TOKEN with a token that can access the repository.",
+    );
   });
 });

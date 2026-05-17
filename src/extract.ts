@@ -52,8 +52,32 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bsensitive\b/i,
   /\bforwards?\b.*\bheaders?\b/i,
   /\bheaders?\b.*\bforwarded\b/i,
+  /\bnever draws?\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
   /\bdoesn['’]?t (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+];
+
+const PR_BODY_STRONG_SIGNAL_PATTERNS: RegExp[] = [
+  /\broot cause\b/i,
+  /\bvulnerability\b/i,
+  /\bsecurity\b/i,
+  /\bregression\b/i,
+  /\bincident\b/i,
+  /\bbug\b/i,
+  /\bfailure\b/i,
+  /\bcrash\b/i,
+  /\bbroken\b/i,
+  /\bleak\b/i,
+  /\bunsafe\b/i,
+  /\btampered\b/i,
+  /\battack\b/i,
+  /\bauth\b/i,
+  /\bsecret\b/i,
+  /\btoken\b/i,
+  /\btiming attack\b/i,
+  /\baccepted\b/i,
+  /\brejected\b/i,
+  /\bfix(?:es|ed)?\b/i,
 ];
 
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [
@@ -79,6 +103,39 @@ const CATEGORY_PATTERNS: Array<{
   category: FailureCandidateCategory;
   patterns: RegExp[];
 }> = [
+  {
+    category: "insecure_randomness",
+    patterns: [
+      /\bMath\.random\(\)/i,
+      /\bpseudo-random\b/i,
+      /\bpredictable\b.{0,80}\b(?:random|identifier|identifiers|id|ids|entropy|uuid|nonce)\b/i,
+      /\b(?:random|identifier|identifiers|id|ids|entropy|uuid|nonce)\b.{0,80}\bpredictable\b/i,
+      /\bcryptographically secure\b/i,
+      /\brandom identifier\b/i,
+      /\bunique identifiers?\b.{0,80}\b(?:random|pseudo-random|predictable|entropy|cryptographic|secure)\b/i,
+      /\b(?:random|pseudo-random|predictable|entropy|cryptographic|secure)\b.{0,80}\bunique identifiers?\b/i,
+      /\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?).{0,80}\buploaded files\b/i,
+      /\buploaded files\b.{0,80}\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?)\b/i,
+      /\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?).{0,80}\boffline queues\b/i,
+      /\boffline queues\b.{0,80}\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?)\b/i,
+    ],
+  },
+  {
+    category: "performance_regression",
+    patterns: [
+      /\bN\+1\b/i,
+      /\bquery pattern\b/i,
+      /\bbatched\b.{0,80}\b(?:database queries|queries|performance|load|execution time|N\+1)\b/i,
+      /\b(?:database queries|queries|performance|load|execution time|N\+1)\b.{0,80}\bbatched\b/i,
+      /\bdatabase queries\b/i,
+      /\bcron\b.{0,80}\b(?:performance|load|execution time|slow|latency|timeout|throughput)\b/i,
+      /\b(?:performance|load|execution time|slow|latency|timeout|throughput)\b.{0,80}\bcron\b/i,
+      /\bperformance\b/i,
+      /\bload\b.{0,80}\b(?:performance|execution time|slow|latency|timeout|throughput|database queries|N\+1)\b/i,
+      /\b(?:performance|execution time|slow|latency|timeout|throughput|database queries|N\+1)\b.{0,80}\bload\b/i,
+      /\bexecution time\b/i,
+    ],
+  },
   {
     category: "security_privacy_regression",
     patterns: [
@@ -344,7 +401,7 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       continue;
     }
 
-    if (!isCandidateFinding(source.body)) {
+    if (!isCandidateFinding(source)) {
       continue;
     }
 
@@ -427,8 +484,20 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
   ];
 }
 
-function isCandidateFinding(body: string): boolean {
-  return matchesAny(body, FAILURE_CUE_PATTERNS) || matchesAny(body, STANDALONE_FINDING_PATTERNS);
+function isCandidateFinding(source: SourceItem): boolean {
+  const matchesStandaloneFinding = matchesAny(source.body, STANDALONE_FINDING_PATTERNS);
+  const matchesFailureCue = matchesAny(source.body, FAILURE_CUE_PATTERNS);
+
+  if (
+    source.sourceType === "pr_body" &&
+    !matchesStandaloneFinding &&
+    !matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS) &&
+    !(matchesFailureCue && detectCategory(source.body) !== "unknown")
+  ) {
+    return false;
+  }
+
+  return matchesStandaloneFinding || matchesFailureCue;
 }
 
 function detectConfidence(

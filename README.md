@@ -74,20 +74,37 @@ Imported data includes PR metadata, issue comments, review comments, reviews,
 basic diff/file stats, and simple candidate AI/agent markers found in bodies,
 comments, reviews, and authors.
 
-For private repositories, export a GitHub token before importing. If you are
-already authenticated with the GitHub CLI, this is usually enough:
+For private repositories, export a GitHub token before importing. Traceback AI
+reads either `GITHUB_TOKEN` or `GH_TOKEN`, so you can use whichever environment
+variable already fits your workflow. If you are already authenticated with the
+GitHub CLI, this is usually enough:
 
 ```bash
+gh auth status
 export GITHUB_TOKEN="$(gh auth token)"
+traceback import --prs 20
+```
+
+`GH_TOKEN` works too:
+
+```bash
+export GH_TOKEN="$(gh auth token)"
 traceback import --prs 20
 ```
 
 When running the built CLI directly:
 
 ```bash
+gh auth status
 export GITHUB_TOKEN="$(gh auth token)"
 /Users/vivek/dev/agentfail/dist/cli.js import --prs 20
 ```
+
+If import returns a GitHub 404 for a repository that exists, the token may be
+missing access to a private repository. Re-run `gh auth status`, export
+`GITHUB_TOKEN` or `GH_TOKEN` with a token that can access the repo, and retry the
+import. Traceback AI does not perform OAuth, browser login, GitHub App auth, or
+credential storage.
 
 ### `traceback report`
 
