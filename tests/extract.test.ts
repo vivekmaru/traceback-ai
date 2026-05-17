@@ -107,6 +107,56 @@ describe("extractFailureCandidates", () => {
     });
   });
 
+  test("does not extract accessibility-only PR body improvements", () => {
+    const record = {
+      ...baseRecord,
+      body: "Improve accessibility for the share panel with clearer labels and keyboard navigation.",
+      issueComments: [],
+      reviewComments: [],
+      reviews: [],
+    };
+
+    expect(extractFailureCandidates([record])).toEqual([]);
+  });
+
+  test("extracts PR body performance root-cause writeups as performance regressions", () => {
+    const record = {
+      ...baseRecord,
+      body: "Root cause: the event dashboard had an N+1 query pattern in a loop. Fixed with batched database queries to reduce load and execution time.",
+      issueComments: [],
+      reviewComments: [],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      sourceType: "pr_body",
+      candidateCategory: "performance_regression",
+      confidence: "low",
+    });
+  });
+
+  test("maps predictable Math.random identifiers to insecure randomness", () => {
+    const record = recordWithReviewComment(
+      "Math.random() creates predictable random identifiers for uploaded files in offline queues; use cryptographically secure randomness.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).toBe("insecure_randomness");
+  });
+
+  test("keeps Date.now render churn mapped to render-time side effect", () => {
+    const record = recordWithReviewComment(
+      "Date.now() is called during render, causing URL regeneration and refetch spam on every re-render.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).toBe("render_time_side_effect");
+  });
+
   test("cleans GitHub badge markdown from extracted titles", () => {
     const record = {
       ...baseRecord,
@@ -262,6 +312,48 @@ describe("extractFailureCandidates", () => {
       candidateCategory: "security_privacy_regression",
       sourceType: "review_comment",
     });
+  });
+
+  test("maps hardcoded production APP_URL findings to environment config", () => {
+    const record = recordWithReviewComment(
+      "The pricing link hardcoded a production domain instead of using APP_URL for preview and self-hosted environments.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).toBe("environment_config_contract_violation");
+  });
+
+  test("maps downloaded PNG preview mismatch to preview output parity", () => {
+    const record = recordWithReviewComment(
+      "The downloaded PNG output omits fields that render in the preview customization UI.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).toBe("preview_output_parity_failure");
+  });
+
+  test("maps query redirect template state loss to query or stale intent", () => {
+    const record = recordWithReviewComment(
+      "The protected redirect drops the template query state and leaves a stale localStorage template intent.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(["query_state_preservation_failure", "stale_persisted_intent"]).toContain(
+      candidate.candidateCategory,
+    );
+  });
+
+  test("maps corporate board renderer eventName omission to preview output parity", () => {
+    const record = recordWithReviewComment(
+      "The backend renderer never draws texts.eventName even though the customization UI allows editing it and the React preview displays it.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).toBe("preview_output_parity_failure");
   });
 });
 

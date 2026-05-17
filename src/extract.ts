@@ -52,8 +52,32 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bsensitive\b/i,
   /\bforwards?\b.*\bheaders?\b/i,
   /\bheaders?\b.*\bforwarded\b/i,
+  /\bnever draws?\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
   /\bdoesn['’]?t (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+];
+
+const PR_BODY_STRONG_SIGNAL_PATTERNS: RegExp[] = [
+  /\broot cause\b/i,
+  /\bvulnerability\b/i,
+  /\bsecurity\b/i,
+  /\bregression\b/i,
+  /\bincident\b/i,
+  /\bbug\b/i,
+  /\bfailure\b/i,
+  /\bcrash\b/i,
+  /\bbroken\b/i,
+  /\bleak\b/i,
+  /\bunsafe\b/i,
+  /\btampered\b/i,
+  /\battack\b/i,
+  /\bauth\b/i,
+  /\bsecret\b/i,
+  /\btoken\b/i,
+  /\btiming attack\b/i,
+  /\baccepted\b/i,
+  /\brejected\b/i,
+  /\bfix(?:es|ed)?\b/i,
 ];
 
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [
@@ -79,6 +103,33 @@ const CATEGORY_PATTERNS: Array<{
   category: FailureCandidateCategory;
   patterns: RegExp[];
 }> = [
+  {
+    category: "insecure_randomness",
+    patterns: [
+      /\bMath\.random\(\)/i,
+      /\bpseudo-random\b/i,
+      /\bpredictable\b/i,
+      /\bcryptographically secure\b/i,
+      /\brandom identifier\b/i,
+      /\bunique identifiers\b/i,
+      /\buploaded files\b/i,
+      /\boffline queues\b/i,
+    ],
+  },
+  {
+    category: "performance_regression",
+    patterns: [
+      /\bN\+1\b/i,
+      /\bquery pattern\b/i,
+      /\bbatched\b/i,
+      /\bdatabase queries\b/i,
+      /\bloop\b/i,
+      /\bcron\b/i,
+      /\bperformance\b/i,
+      /\bload\b/i,
+      /\bexecution time\b/i,
+    ],
+  },
   {
     category: "security_privacy_regression",
     patterns: [
@@ -344,7 +395,7 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       continue;
     }
 
-    if (!isCandidateFinding(source.body)) {
+    if (!isCandidateFinding(source)) {
       continue;
     }
 
@@ -427,8 +478,15 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
   ];
 }
 
-function isCandidateFinding(body: string): boolean {
-  return matchesAny(body, FAILURE_CUE_PATTERNS) || matchesAny(body, STANDALONE_FINDING_PATTERNS);
+function isCandidateFinding(source: SourceItem): boolean {
+  if (source.sourceType === "pr_body" && !matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS)) {
+    return false;
+  }
+
+  return (
+    matchesAny(source.body, FAILURE_CUE_PATTERNS) ||
+    matchesAny(source.body, STANDALONE_FINDING_PATTERNS)
+  );
 }
 
 function detectConfidence(

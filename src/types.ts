@@ -121,6 +121,8 @@ export type FailureCandidateCategory =
   | "user_input_loss"
   | "lifecycle_ordering_bug"
   | "render_time_side_effect"
+  | "insecure_randomness"
+  | "performance_regression"
   | "parser_permissiveness"
   | "overbroad_change"
   | "context_omission"
