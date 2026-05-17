@@ -171,6 +171,28 @@ describe("extractFailureCandidates", () => {
     expect(extractFailureCandidates([record])).toEqual([]);
   });
 
+  test("does not use review comment replies to classify non-review-comment sources", () => {
+    const record = {
+      ...baseRecord,
+      body: "Root cause: Buffer.from(mac, \"hex\") accepted trailing malformed token data.",
+      issueComments: [],
+      reviewComments: [
+        {
+          ...baseRecord.reviewComments[0],
+          id: 2002,
+          body: "Good catch, fixed in the follow-up commit.",
+          inReplyToId: 91,
+        },
+      ],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.sourceType).toBe("pr_body");
+    expect(candidate.status).toBe("candidate");
+  });
+
   test("does not extract neutral domain comments without a failure cue", () => {
     const record = {
       ...baseRecord,

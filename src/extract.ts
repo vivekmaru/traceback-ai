@@ -320,7 +320,12 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
     }
 
     const replyBodies = sources
-      .filter((reply) => reply.inReplyToId === source.id)
+      .filter(
+        (reply) =>
+          source.sourceType === "review_comment" &&
+          reply.sourceType === "review_comment" &&
+          reply.inReplyToId === source.id,
+      )
       .map((reply) => reply.body)
       .filter(Boolean);
 
