@@ -112,8 +112,10 @@ const CATEGORY_PATTERNS: Array<{
       /\bcryptographically secure\b/i,
       /\brandom identifier\b/i,
       /\bunique identifiers\b/i,
-      /\buploaded files\b/i,
-      /\boffline queues\b/i,
+      /\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?).{0,80}\buploaded files\b/i,
+      /\buploaded files\b.{0,80}\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?)\b/i,
+      /\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?).{0,80}\boffline queues\b/i,
+      /\boffline queues\b.{0,80}\b(?:random|pseudo-random|predictable|unique identifiers?|random identifiers?)\b/i,
     ],
   },
   {
@@ -479,14 +481,17 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
 }
 
 function isCandidateFinding(source: SourceItem): boolean {
-  if (source.sourceType === "pr_body" && !matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS)) {
+  const matchesStandaloneFinding = matchesAny(source.body, STANDALONE_FINDING_PATTERNS);
+
+  if (
+    source.sourceType === "pr_body" &&
+    !matchesStandaloneFinding &&
+    !matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS)
+  ) {
     return false;
   }
 
-  return (
-    matchesAny(source.body, FAILURE_CUE_PATTERNS) ||
-    matchesAny(source.body, STANDALONE_FINDING_PATTERNS)
-  );
+  return matchesStandaloneFinding || matchesAny(source.body, FAILURE_CUE_PATTERNS);
 }
 
 function detectConfidence(

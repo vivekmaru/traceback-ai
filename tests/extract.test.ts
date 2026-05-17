@@ -147,6 +147,24 @@ describe("extractFailureCandidates", () => {
     expect(candidate.candidateCategory).toBe("insecure_randomness");
   });
 
+  test("extracts standalone PR body signals without other strong PR body prose", () => {
+    const record = {
+      ...baseRecord,
+      body: "Date.now() is called during render, causing URL regeneration and refetch spam on every re-render.",
+      issueComments: [],
+      reviewComments: [],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      sourceType: "pr_body",
+      candidateCategory: "render_time_side_effect",
+      confidence: "low",
+    });
+  });
+
   test("keeps Date.now render churn mapped to render-time side effect", () => {
     const record = recordWithReviewComment(
       "Date.now() is called during render, causing URL regeneration and refetch spam on every re-render.",
@@ -155,6 +173,16 @@ describe("extractFailureCandidates", () => {
     const [candidate] = extractFailureCandidates([record]);
 
     expect(candidate.candidateCategory).toBe("render_time_side_effect");
+  });
+
+  test("does not classify generic uploaded files or offline queues as insecure randomness", () => {
+    const record = recordWithReviewComment(
+      "The uploader drops metadata for uploaded files when offline queues are replayed.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("insecure_randomness");
   });
 
   test("cleans GitHub badge markdown from extracted titles", () => {
