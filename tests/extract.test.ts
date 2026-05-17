@@ -137,6 +137,36 @@ describe("extractFailureCandidates", () => {
     });
   });
 
+  test("extracts hardcoded environment failures from PR bodies", () => {
+    const record = {
+      ...baseRecord,
+      body: "The pricing link hardcoded a production domain instead of using APP_URL for preview environments.",
+      issueComments: [],
+      reviewComments: [],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      sourceType: "pr_body",
+      candidateCategory: "environment_config_contract_violation",
+      confidence: "low",
+    });
+  });
+
+  test("does not extract uncategorized weak PR body failure cues", () => {
+    const record = {
+      ...baseRecord,
+      body: "Missing polish for the button spacing in the toolbar.",
+      issueComments: [],
+      reviewComments: [],
+      reviews: [],
+    };
+
+    expect(extractFailureCandidates([record])).toEqual([]);
+  });
+
   test("maps predictable Math.random identifiers to insecure randomness", () => {
     const record = recordWithReviewComment(
       "Math.random() creates predictable random identifiers for uploaded files in offline queues; use cryptographically secure randomness.",
@@ -183,6 +213,26 @@ describe("extractFailureCandidates", () => {
     const [candidate] = extractFailureCandidates([record]);
 
     expect(candidate.candidateCategory).not.toBe("insecure_randomness");
+  });
+
+  test("does not classify generic predictable wording as insecure randomness", () => {
+    const record = recordWithReviewComment(
+      "The retry worker drops requests because predictable offline retry ordering replays stale work.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("insecure_randomness");
+  });
+
+  test("does not classify generic loop wording as performance regression", () => {
+    const record = recordWithReviewComment(
+      "The form drops edits inside a loop while the user is editing template text.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("performance_regression");
   });
 
   test("cleans GitHub badge markdown from extracted titles", () => {

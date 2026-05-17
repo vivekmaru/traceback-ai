@@ -108,7 +108,8 @@ const CATEGORY_PATTERNS: Array<{
     patterns: [
       /\bMath\.random\(\)/i,
       /\bpseudo-random\b/i,
-      /\bpredictable\b/i,
+      /\bpredictable\b.{0,80}\b(?:random|identifier|identifiers|id|ids|entropy|uuid|nonce)\b/i,
+      /\b(?:random|identifier|identifiers|id|ids|entropy|uuid|nonce)\b.{0,80}\bpredictable\b/i,
       /\bcryptographically secure\b/i,
       /\brandom identifier\b/i,
       /\bunique identifiers\b/i,
@@ -125,7 +126,6 @@ const CATEGORY_PATTERNS: Array<{
       /\bquery pattern\b/i,
       /\bbatched\b/i,
       /\bdatabase queries\b/i,
-      /\bloop\b/i,
       /\bcron\b/i,
       /\bperformance\b/i,
       /\bload\b/i,
@@ -482,16 +482,18 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
 
 function isCandidateFinding(source: SourceItem): boolean {
   const matchesStandaloneFinding = matchesAny(source.body, STANDALONE_FINDING_PATTERNS);
+  const matchesFailureCue = matchesAny(source.body, FAILURE_CUE_PATTERNS);
 
   if (
     source.sourceType === "pr_body" &&
     !matchesStandaloneFinding &&
-    !matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS)
+    !matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS) &&
+    !(matchesFailureCue && detectCategory(source.body) !== "unknown")
   ) {
     return false;
   }
 
-  return matchesStandaloneFinding || matchesAny(source.body, FAILURE_CUE_PATTERNS);
+  return matchesStandaloneFinding || matchesFailureCue;
 }
 
 function detectConfidence(
