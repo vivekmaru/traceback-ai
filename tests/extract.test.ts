@@ -208,6 +208,22 @@ describe("extractFailureCandidates", () => {
 
     expect(extractFailureCandidates([record])).toEqual([]);
   });
+
+  test("does not extract neutral does-not comments without a stronger failure cue", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewComments: [
+        {
+          ...baseRecord.reviewComments[0],
+          body: "This does not need further changes.",
+        },
+      ],
+      reviews: [],
+    };
+
+    expect(extractFailureCandidates([record])).toEqual([]);
+  });
 });
 
 describe("deterministic extraction helpers", () => {
@@ -235,6 +251,7 @@ describe("deterministic extraction helpers", () => {
     );
     expect(detectStatus("This is unsafe", ["This isn't valid."])).toBe("rejected");
     expect(detectStatus("This is unsafe", ["Not done yet."])).toBe("candidate");
+    expect(detectStatus("This is unsafe", ["Fixed as intended."])).toBe("resolved");
   });
 
   test("maps representative keyword categories", () => {

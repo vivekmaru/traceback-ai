@@ -28,8 +28,6 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bregression\b/i,
   /\broot cause\b/i,
   /\bmissing\b/i,
-  /\bdoes not\b/i,
-  /\bdoesn't\b/i,
   /\bfails?\b/i,
   /\bincorrect\b/i,
   /\bunsafe\b/i,
@@ -201,7 +199,7 @@ const CATEGORY_PATTERNS: Array<{
   },
 ];
 
-const RESOLVED_PATTERNS = [/\bfixed in\b/i, /\baddressed in\b/i, /\bresolved\b/i];
+const RESOLVED_PATTERNS = [/\bfixed\b/i, /\baddressed in\b/i, /\bresolved\b/i];
 const NEGATED_RESOLUTION_PATTERNS = [
   /\bnot\s+(?:fixed|addressed|resolved)\b/i,
   /\bwasn['’]?t\s+(?:fixed|addressed|resolved)\b/i,
@@ -218,7 +216,6 @@ const NEGATED_ACCEPTANCE_PATTERNS = [
 ];
 const ACCEPTED_PATTERNS = [
   /\bgood catch\b/i,
-  /\bfixed\b/i,
   /\bvalid\b/i,
   /\baddressed\b/i,
   /\bdone\b/i,
@@ -235,7 +232,8 @@ const REJECTED_PATTERNS = [
   /\bleaving as-is\b/i,
   /\bleaving as is\b/i,
   /\bnot an issue\b/i,
-  /\bintended\b/i,
+  /\bworks? as intended\b/i,
+  /\bintended behavior\b/i,
   /\bby design\b/i,
 ];
 const CONTESTED_PATTERNS = [
