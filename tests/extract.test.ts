@@ -235,6 +235,42 @@ describe("extractFailureCandidates", () => {
     expect(candidate.candidateCategory).not.toBe("performance_regression");
   });
 
+  test("does not classify generic load wording as performance regression", () => {
+    const record = recordWithReviewComment("The avatar fails to load in Safari.");
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("performance_regression");
+  });
+
+  test("does not classify generic cron wording as performance regression", () => {
+    const record = recordWithReviewComment("The cron worker drops invoice emails on DST shift.");
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("performance_regression");
+  });
+
+  test("does not classify generic batched wording as performance regression", () => {
+    const record = recordWithReviewComment(
+      "The batched webhook sender drops events when one payload is malformed.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("performance_regression");
+  });
+
+  test("does not classify generic unique identifier wording as insecure randomness", () => {
+    const record = recordWithReviewComment(
+      "The migration drops rows when legacy unique identifiers are duplicated.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.candidateCategory).not.toBe("insecure_randomness");
+  });
+
   test("cleans GitHub badge markdown from extracted titles", () => {
     const record = {
       ...baseRecord,
