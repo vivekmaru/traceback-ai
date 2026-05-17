@@ -14,17 +14,17 @@ program
   .description("Convert PR noise into local Traceback AI import records.")
   .version("0.1.0");
 
-program.command("init").description("Create the local .agentfail directory.").action(runInit);
+program.command("init").description("Create the local .traceback directory.").action(runInit);
 
 program
   .command("import")
-  .description("Import recent GitHub pull request data into .agentfail.")
+  .description("Import recent GitHub pull request data into .traceback.")
   .requiredOption("--prs <number>", "number of recent pull requests to import", parsePrCount)
   .action(runImport);
 
 program
   .command("report")
-  .description("Generate .agentfail/reports/import-summary.md from normalized records.")
+  .description("Generate .traceback/reports/import-summary.md from normalized records.")
   .action(runReport);
 
 program.parseAsync().catch((error: unknown) => {
@@ -35,7 +35,7 @@ program.parseAsync().catch((error: unknown) => {
 async function runInit(): Promise<void> {
   const repoRoot = await findGitRoot();
   await initTraceback(repoRoot);
-  console.log(`Created .agentfail/ in ${repoRoot}`);
+  console.log(`Created .traceback/ in ${repoRoot}`);
 }
 
 async function runImport(options: { prs: number }): Promise<void> {

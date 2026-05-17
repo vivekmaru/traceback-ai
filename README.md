@@ -43,7 +43,7 @@ bun run build
 Creates the local Traceback AI working directory:
 
 ```text
-.agentfail/
+.traceback/
 ├── imports/
 ├── records/
 └── reports/
@@ -63,8 +63,8 @@ Supported remote formats:
 
 For each PR, Traceback AI stores:
 
-- raw GitHub data in `.agentfail/imports/pr-<number>.json`
-- normalized local records in `.agentfail/records/pr-<number>.json`
+- raw GitHub data in `.traceback/imports/pr-<number>.json`
+- normalized local records in `.traceback/records/pr-<number>.json`
 
 Imported data includes PR metadata, issue comments, review comments, reviews,
 basic diff/file stats, and simple candidate AI/agent markers found in bodies,
@@ -72,10 +72,10 @@ comments, reviews, and authors.
 
 ### `traceback report`
 
-Reads `.agentfail/records/` and writes:
+Reads `.traceback/records/` and writes:
 
 ```text
-.agentfail/reports/import-summary.md
+.traceback/reports/import-summary.md
 ```
 
 The report summarizes imported PR counts, merged PRs, comments, reviews, review
@@ -85,13 +85,13 @@ comments, and candidate AI/agent markers.
 
 Traceback AI Milestone 1 is local-only:
 
-- Raw data stays under `.agentfail/`.
+- Raw data stays under `.traceback/`.
 - Nothing is uploaded by Traceback AI.
 - No LLM calls are made.
 - No hosted service, GitHub App, local web UI, or TUI is started.
 - Repo instruction files such as `AGENTS.md` are not generated or modified.
 
-`.agentfail/` is ignored by git because imported PR data can contain private
+`.traceback/` is ignored by git because imported PR data can contain private
 code, comments, diffs, and review context.
 
 ## Development

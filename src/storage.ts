@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { NormalizedPullRequestRecord, RawPullRequestBundle } from "./types";
 
-export const TRACEBACK_DATA_DIR = ".agentfail";
+export const TRACEBACK_DATA_DIR = ".traceback";
 
 export type TracebackPaths = {
   root: string;
