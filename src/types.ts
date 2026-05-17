@@ -46,6 +46,7 @@ export type GitHubReviewComment = GitHubIssueComment & {
   path?: string | null;
   line?: number | null;
   original_line?: number | null;
+  in_reply_to_id?: number | null;
   commit_id?: string | null;
 };
 
@@ -80,6 +81,7 @@ export type NormalizedReviewComment = NormalizedComment & {
   path: string | null;
   line: number | null;
   originalLine: number | null;
+  inReplyToId: number | null;
   commitId: string | null;
 };
 

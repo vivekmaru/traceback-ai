@@ -55,6 +55,7 @@ const baseRecord: NormalizedPullRequestRecord = {
       path: "src/auth.ts",
       line: 42,
       originalLine: 39,
+      inReplyToId: null,
       commitId: "abc123",
     },
   ],
@@ -128,6 +129,46 @@ describe("extractFailureCandidates", () => {
     const [candidate] = extractFailureCandidates([baseRecord]);
 
     expect(candidate.status).toBe("candidate");
+  });
+
+  test("infers status from review comment replies in the same thread", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewComments: [
+        baseRecord.reviewComments[0],
+        {
+          ...baseRecord.reviewComments[0],
+          id: 2002,
+          body: "Good catch, fixed in the follow-up commit.",
+          inReplyToId: 2001,
+        },
+      ],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.id).toBe("failure-pr-91-review_comment-2001");
+    expect(candidate.status).toBe("resolved");
+  });
+
+  test("does not extract review comment replies as standalone candidates", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewComments: [
+        {
+          ...baseRecord.reviewComments[0],
+          id: 2002,
+          body: "Good catch, fixed in the follow-up commit.",
+          inReplyToId: 2001,
+        },
+      ],
+      reviews: [],
+    };
+
+    expect(extractFailureCandidates([record])).toEqual([]);
   });
 
   test("does not extract neutral domain comments without a failure cue", () => {

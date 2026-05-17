@@ -74,6 +74,7 @@ function normalizeReviewComment(comment: GitHubReviewComment): NormalizedReviewC
     path: comment.path ?? null,
     line: comment.line ?? null,
     originalLine: comment.original_line ?? null,
+    inReplyToId: comment.in_reply_to_id ?? null,
     commitId: comment.commit_id ?? null,
   };
 }

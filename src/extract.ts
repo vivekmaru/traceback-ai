@@ -16,6 +16,7 @@ type SourceItem = {
   url: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  inReplyToId: number | null;
 };
 
 const FAILURE_CUE_PATTERNS: RegExp[] = [
@@ -310,9 +311,18 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
   const candidates: FailureCandidate[] = [];
 
   for (const source of sources) {
+    if (source.inReplyToId !== null) {
+      continue;
+    }
+
     if (!isCandidateFinding(source.body)) {
       continue;
     }
+
+    const replyBodies = sources
+      .filter((reply) => reply.inReplyToId === source.id)
+      .map((reply) => reply.body)
+      .filter(Boolean);
 
     candidates.push({
       schemaVersion: 1,
@@ -327,7 +337,7 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       candidateCategory: detectCategory(source.body),
       candidateSeverity: detectSeverity(source.body),
       confidence: detectConfidence(source, record),
-      status: detectStatus(source.body, []),
+      status: detectStatus(source.body, replyBodies),
       detectedAgentMarkers: detectAgentMarkers(source.body, source.author),
       createdAt: source.createdAt,
       updatedAt: source.updatedAt,
@@ -348,6 +358,7 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
       url: comment.url,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
+      inReplyToId: comment.inReplyToId ?? null,
     })),
     ...record.reviews.map((review) => ({
       id: review.id,
@@ -357,6 +368,7 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
       url: review.url,
       createdAt: review.submittedAt,
       updatedAt: review.submittedAt,
+      inReplyToId: null,
     })),
     ...record.issueComments.map((comment) => ({
       id: comment.id,
@@ -366,6 +378,7 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
       url: comment.url,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
+      inReplyToId: null,
     })),
     {
       id: record.prNumber,
@@ -375,6 +388,7 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
       url: null,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
+      inReplyToId: null,
     },
   ];
 }
