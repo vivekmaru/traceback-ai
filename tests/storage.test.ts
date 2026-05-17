@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { getTracebackPaths, writeFailureCandidates } from "../src/storage";
+import { getTracebackPaths, readImportedRecords, writeFailureCandidates } from "../src/storage";
 import type { FailureCandidate } from "../src/types";
 
 describe("getTracebackPaths", () => {
@@ -32,6 +32,26 @@ describe("getTracebackPaths", () => {
       expect(await readdir(path.dirname(stalePath))).toEqual([
         "failure-pr-12-review_comment-99.json",
       ]);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects older normalized records before extraction", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-storage-"));
+    const recordsDir = path.join(repoRoot, ".traceback", "records");
+
+    try {
+      await mkdir(recordsDir, { recursive: true });
+      await writeFile(
+        path.join(recordsDir, "pr-91.json"),
+        `${JSON.stringify({ schemaVersion: 1, prNumber: 91, reviewComments: [] })}\n`,
+        "utf8",
+      );
+
+      await expect(readImportedRecords(repoRoot)).rejects.toThrow(
+        "Unsupported normalized PR record schema in .traceback/records/pr-91.json",
+      );
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

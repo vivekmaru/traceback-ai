@@ -9,7 +9,7 @@ import {
 import type { NormalizedPullRequestRecord } from "../src/types";
 
 const baseRecord: NormalizedPullRequestRecord = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   importedAt: "2026-05-17T00:00:00.000Z",
   repository: {
     owner: "vivekmaru",
@@ -230,6 +230,11 @@ describe("deterministic extraction helpers", () => {
     expect(detectStatus("This is unsafe", ["Good catch, addressed in abc123."])).toBe("resolved");
     expect(detectStatus("This is unsafe", ["Not fixed yet."])).toBe("candidate");
     expect(detectStatus("This is unsafe", ["This is not resolved."])).toBe("candidate");
+    expect(detectStatus("This is unsafe", ["Not fixed yet.", "Fixed in abc123."])).toBe(
+      "resolved",
+    );
+    expect(detectStatus("This is unsafe", ["This isn't valid."])).toBe("rejected");
+    expect(detectStatus("This is unsafe", ["Not done yet."])).toBe("candidate");
   });
 
   test("maps representative keyword categories", () => {

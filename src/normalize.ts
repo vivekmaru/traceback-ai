@@ -9,6 +9,7 @@ import type {
   NormalizedReviewComment,
   RawPullRequestBundle,
 } from "./types";
+import { NORMALIZED_RECORD_SCHEMA_VERSION } from "./types";
 
 const MARKER_PATTERNS: Array<[marker: string, pattern: RegExp]> = [
   ["codex", /\bcodex\b/i],
@@ -29,7 +30,7 @@ export function normalizePullRequestRecord(
   const reviews = bundle.reviews.map(normalizeReview);
 
   return {
-    schemaVersion: 1,
+    schemaVersion: NORMALIZED_RECORD_SCHEMA_VERSION,
     importedAt: bundle.importedAt,
     repository: bundle.repository,
     prNumber: pr.number,

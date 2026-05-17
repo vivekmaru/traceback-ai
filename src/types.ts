@@ -1,3 +1,5 @@
+export const NORMALIZED_RECORD_SCHEMA_VERSION = 2;
+
 export type GitHubRepository = {
   owner: string;
   repo: string;
@@ -157,7 +159,7 @@ export type FailureCandidate = {
 };
 
 export type NormalizedPullRequestRecord = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   importedAt: string;
   repository: GitHubRepository;
   prNumber: number;

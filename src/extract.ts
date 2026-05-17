@@ -209,6 +209,13 @@ const NEGATED_RESOLUTION_PATTERNS = [
   /\bnever\s+(?:fixed|addressed|resolved)\b/i,
   /\b(?:fixed|addressed|resolved)\s+yet\b/i,
 ];
+const NEGATED_ACCEPTANCE_PATTERNS = [
+  /\bnot\s+(?:done|agreed)\b/i,
+  /\bwasn['’]?t\s+(?:done|valid|agreed)\b/i,
+  /\bisn['’]?t\s+(?:done|valid|agreed)\b/i,
+  /\bnever\s+(?:done|valid|agreed)\b/i,
+  /\b(?:done|valid|agreed)\s+yet\b/i,
+];
 const ACCEPTED_PATTERNS = [
   /\bgood catch\b/i,
   /\bfixed\b/i,
@@ -222,6 +229,8 @@ const ACCEPTED_PATTERNS = [
 const REJECTED_PATTERNS = [
   /\bdisagree\b/i,
   /\bnot valid\b/i,
+  /\bisn['’]?t valid\b/i,
+  /\bwasn['’]?t valid\b/i,
   /\bfalse positive\b/i,
   /\bleaving as-is\b/i,
   /\bleaving as is\b/i,
@@ -272,11 +281,26 @@ export function detectSeverity(body: string): FailureCandidateSeverity | null {
 }
 
 export function detectStatus(sourceBody: string, nearbyReplies: string[]): FailureCandidateStatus {
-  const replyText = nearbyReplies.join("\n");
+  for (const replyText of [...nearbyReplies].reverse()) {
+    const replyStatus = detectReplyStatus(replyText);
+    if (replyStatus) {
+      return replyStatus;
+    }
+  }
+  if (matchesAny(`${sourceBody}\n${nearbyReplies.join("\n")}`, CONTESTED_PATTERNS)) {
+    return "contested";
+  }
+  return "candidate";
+}
+
+function detectReplyStatus(replyText: string): FailureCandidateStatus | null {
   if (matchesAny(replyText, REJECTED_PATTERNS)) {
     return "rejected";
   }
-  if (matchesAny(replyText, NEGATED_RESOLUTION_PATTERNS)) {
+  if (
+    matchesAny(replyText, NEGATED_RESOLUTION_PATTERNS) ||
+    matchesAny(replyText, NEGATED_ACCEPTANCE_PATTERNS)
+  ) {
     return "candidate";
   }
   if (matchesAny(replyText, RESOLVED_PATTERNS)) {
@@ -285,10 +309,7 @@ export function detectStatus(sourceBody: string, nearbyReplies: string[]): Failu
   if (matchesAny(replyText, ACCEPTED_PATTERNS)) {
     return "accepted";
   }
-  if (matchesAny(`${sourceBody}\n${replyText}`, CONTESTED_PATTERNS)) {
-    return "contested";
-  }
-  return "candidate";
+  return null;
 }
 
 export function detectCategory(body: string): FailureCandidateCategory {
