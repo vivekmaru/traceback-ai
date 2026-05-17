@@ -18,13 +18,14 @@ type SourceItem = {
   updatedAt: string | null;
 };
 
-const FINDING_PATTERNS: RegExp[] = [
+const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bbug\b/i,
   /\bbreaks?\b/i,
   /\bbroken\b/i,
   /\brisk\b/i,
   /\bleak\b/i,
   /\bregression\b/i,
+  /\broot cause\b/i,
   /\bmissing\b/i,
   /\bdoes not\b/i,
   /\bdoesn't\b/i,
@@ -42,22 +43,12 @@ const FINDING_PATTERNS: RegExp[] = [
   /\bthrows\b/i,
   /\bcrash\b/i,
   /\bRangeError\b/i,
-  /\bauth\b/i,
-  /\bcookie\b/i,
-  /\bauthorization\b/i,
-  /\bsecret\b/i,
-  /\btoken\b/i,
+  /\bmalformed\b/i,
+  /\btampered\b/i,
+];
+
+const STANDALONE_FINDING_PATTERNS: RegExp[] = [
   /\btiming attack\b/i,
-  /\blocalStorage\b/i,
-  /\bsessionStorage\b/i,
-  /\bquery\b/i,
-  /\bsearch\b/i,
-  /\bredirect\b/i,
-  /\bpreview\b/i,
-  /\bgenerated output\b/i,
-  /\bdownloaded\b/i,
-  /\brenderer\b/i,
-  /\brefetch\b/i,
   /\bDate\.now\(\)/i,
   /\bMath\.random\(\)/i,
 ];
@@ -210,6 +201,13 @@ const CATEGORY_PATTERNS: Array<{
 ];
 
 const RESOLVED_PATTERNS = [/\bfixed in\b/i, /\baddressed in\b/i, /\bresolved\b/i];
+const NEGATED_RESOLUTION_PATTERNS = [
+  /\bnot\s+(?:fixed|addressed|resolved)\b/i,
+  /\bwasn['’]?t\s+(?:fixed|addressed|resolved)\b/i,
+  /\bisn['’]?t\s+(?:fixed|addressed|resolved)\b/i,
+  /\bnever\s+(?:fixed|addressed|resolved)\b/i,
+  /\b(?:fixed|addressed|resolved)\s+yet\b/i,
+];
 const ACCEPTED_PATTERNS = [
   /\bgood catch\b/i,
   /\bfixed\b/i,
@@ -274,11 +272,14 @@ export function detectSeverity(body: string): FailureCandidateSeverity | null {
 
 export function detectStatus(sourceBody: string, nearbyReplies: string[]): FailureCandidateStatus {
   const replyText = nearbyReplies.join("\n");
-  if (matchesAny(replyText, RESOLVED_PATTERNS)) {
-    return "resolved";
-  }
   if (matchesAny(replyText, REJECTED_PATTERNS)) {
     return "rejected";
+  }
+  if (matchesAny(replyText, NEGATED_RESOLUTION_PATTERNS)) {
+    return "candidate";
+  }
+  if (matchesAny(replyText, RESOLVED_PATTERNS)) {
+    return "resolved";
   }
   if (matchesAny(replyText, ACCEPTED_PATTERNS)) {
     return "accepted";
@@ -306,7 +307,6 @@ export function detectCategory(body: string): FailureCandidateCategory {
 
 function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidate[] {
   const sources = collectSources(record);
-  const replyBodies = sources.map((source) => source.body).filter(Boolean);
   const candidates: FailureCandidate[] = [];
 
   for (const source of sources) {
@@ -314,7 +314,6 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       continue;
     }
 
-    const nearbyReplies = replyBodies.filter((body) => body !== source.body);
     candidates.push({
       schemaVersion: 1,
       id: `failure-pr-${record.prNumber}-${source.sourceType}-${source.id}`,
@@ -328,7 +327,7 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       candidateCategory: detectCategory(source.body),
       candidateSeverity: detectSeverity(source.body),
       confidence: detectConfidence(source, record),
-      status: detectStatus(source.body, nearbyReplies),
+      status: detectStatus(source.body, []),
       detectedAgentMarkers: detectAgentMarkers(source.body, source.author),
       createdAt: source.createdAt,
       updatedAt: source.updatedAt,
@@ -381,7 +380,7 @@ function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
 }
 
 function isCandidateFinding(body: string): boolean {
-  return matchesAny(body, FINDING_PATTERNS);
+  return matchesAny(body, FAILURE_CUE_PATTERNS) || matchesAny(body, STANDALONE_FINDING_PATTERNS);
 }
 
 function detectConfidence(

@@ -76,7 +76,7 @@ describe("extractFailureCandidates", () => {
       candidateCategory: "query_state_preservation_failure",
       candidateSeverity: "high",
       confidence: "high",
-      status: "resolved",
+      status: "candidate",
       detectedAgentMarkers: ["chatgpt-codex-connector", "codex", "bot"],
       createdAt: "2026-05-02T03:00:00Z",
       updatedAt: "2026-05-02T03:05:00Z",
@@ -123,6 +123,28 @@ describe("extractFailureCandidates", () => {
 
     expect(candidate.extractedTitle).toBe("Missing query state in redirect");
   });
+
+  test("does not infer status from unrelated PR comments", () => {
+    const [candidate] = extractFailureCandidates([baseRecord]);
+
+    expect(candidate.status).toBe("candidate");
+  });
+
+  test("does not extract neutral domain comments without a failure cue", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewComments: [
+        {
+          ...baseRecord.reviewComments[0],
+          body: "The search params are passed through the redirect helper.",
+        },
+      ],
+      reviews: [],
+    };
+
+    expect(extractFailureCandidates([record])).toEqual([]);
+  });
 });
 
 describe("deterministic extraction helpers", () => {
@@ -143,6 +165,8 @@ describe("deterministic extraction helpers", () => {
     expect(detectStatus("I think this is unsafe. Thoughts?", [])).toBe("contested");
     expect(detectStatus("This is unsafe", ["I disagree, this is not an issue."])).toBe("rejected");
     expect(detectStatus("This is unsafe", ["Good catch, addressed in abc123."])).toBe("resolved");
+    expect(detectStatus("This is unsafe", ["Not fixed yet."])).toBe("candidate");
+    expect(detectStatus("This is unsafe", ["This is not resolved."])).toBe("candidate");
   });
 
   test("maps representative keyword categories", () => {
