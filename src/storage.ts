@@ -1,6 +1,7 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { NormalizedPullRequestRecord, RawPullRequestBundle } from "./types";
+import { NORMALIZED_RECORD_SCHEMA_VERSION } from "./types";
+import type { FailureCandidate, NormalizedPullRequestRecord, RawPullRequestBundle } from "./types";
 
 export const TRACEBACK_DATA_DIR = ".traceback";
 
@@ -9,6 +10,7 @@ export type TracebackPaths = {
   dir: string;
   imports: string;
   records: string;
+  failures: string;
   reports: string;
 };
 
@@ -19,6 +21,7 @@ export function getTracebackPaths(repoRoot: string): TracebackPaths {
     dir,
     imports: path.join(dir, "imports"),
     records: path.join(dir, "records"),
+    failures: path.join(dir, "records", "failures"),
     reports: path.join(dir, "reports"),
   };
 }
@@ -28,6 +31,7 @@ export async function initTraceback(repoRoot: string): Promise<TracebackPaths> {
   await Promise.all([
     mkdir(paths.imports, { recursive: true }),
     mkdir(paths.records, { recursive: true }),
+    mkdir(paths.failures, { recursive: true }),
     mkdir(paths.reports, { recursive: true }),
   ]);
   return paths;
@@ -74,6 +78,46 @@ export async function readRecords(repoRoot: string): Promise<NormalizedPullReque
   return records.sort((a, b) => b.prNumber - a.prNumber);
 }
 
+export async function readImportedRecords(repoRoot: string): Promise<NormalizedPullRequestRecord[]> {
+  const paths = getTracebackPaths(repoRoot);
+  let entries: string[];
+  try {
+    entries = await readdir(paths.records);
+  } catch {
+    throw new Error(
+      "No imported PR records found in .traceback/records/. Run `traceback import --prs <number>` first.",
+    );
+  }
+
+  if (!entries.some((entry) => entry.endsWith(".json"))) {
+    throw new Error(
+      "No imported PR records found in .traceback/records/. Run `traceback import --prs <number>` first.",
+    );
+  }
+
+  const records = await readRecords(repoRoot);
+  validateImportedRecords(records);
+  return records;
+}
+
+export async function writeFailureCandidates(
+  repoRoot: string,
+  candidates: FailureCandidate[],
+): Promise<string[]> {
+  const paths = await initTraceback(repoRoot);
+  await rm(paths.failures, { recursive: true, force: true });
+  await mkdir(paths.failures, { recursive: true });
+
+  const filePaths: string[] = [];
+  for (const candidate of candidates) {
+    const filePath = path.join(paths.failures, `${candidate.id}.json`);
+    await writeJson(filePath, candidate);
+    filePaths.push(filePath);
+  }
+
+  return filePaths;
+}
+
 export async function writeReport(
   repoRoot: string,
   fileName: string,
@@ -91,4 +135,22 @@ function prFileName(prNumber: number): string {
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function validateImportedRecords(records: NormalizedPullRequestRecord[]): void {
+  for (const record of records) {
+    if (record.schemaVersion !== NORMALIZED_RECORD_SCHEMA_VERSION) {
+      throw new Error(
+        `Unsupported normalized PR record schema in .traceback/records/pr-${record.prNumber}.json. Run \`traceback import --prs <number>\` again before extracting failures.`,
+      );
+    }
+
+    for (const comment of record.reviewComments) {
+      if (!Object.hasOwn(comment, "inReplyToId")) {
+        throw new Error(
+          `Unsupported normalized PR record schema in .traceback/records/pr-${record.prNumber}.json. Run \`traceback import --prs <number>\` again before extracting failures.`,
+        );
+      }
+    }
+  }
 }

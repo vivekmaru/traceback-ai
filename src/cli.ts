@@ -1,10 +1,19 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
+import { extractFailureCandidates } from "./extract";
 import { findGitRoot, parseGitHubRemote, readOriginRemote } from "./git";
 import { GitHubApiError, importRecentPullRequests } from "./github";
 import { normalizePullRequestRecord } from "./normalize";
-import { generateImportSummary } from "./report";
-import { initTraceback, readRecords, writeRawImport, writeRecord, writeReport } from "./storage";
+import { generateFailureCandidatesReport, generateImportSummary } from "./report";
+import {
+  initTraceback,
+  readImportedRecords,
+  readRecords,
+  writeFailureCandidates,
+  writeRawImport,
+  writeRecord,
+  writeReport,
+} from "./storage";
 import type { GitHubRepository } from "./types";
 
 const program = new Command();
@@ -26,6 +35,11 @@ program
   .command("report")
   .description("Generate .traceback/reports/import-summary.md from normalized records.")
   .action(runReport);
+
+program
+  .command("extract")
+  .description("Extract deterministic failure candidates from imported PR records.")
+  .action(runExtract);
 
 program.parseAsync().catch((error: unknown) => {
   printError(error);
@@ -55,6 +69,23 @@ async function runReport(): Promise<void> {
   const repoRoot = await findGitRoot();
   const records = await readRecords(repoRoot);
   const reportPath = await writeReport(repoRoot, "import-summary.md", generateImportSummary(records));
+  console.log(`Wrote ${reportPath}`);
+}
+
+async function runExtract(): Promise<void> {
+  const repoRoot = await findGitRoot();
+  const records = await readImportedRecords(repoRoot);
+  const candidates = extractFailureCandidates(records);
+  await writeFailureCandidates(repoRoot, candidates);
+  const reportPath = await writeReport(
+    repoRoot,
+    "failure-candidates.md",
+    generateFailureCandidatesReport(candidates),
+  );
+
+  console.log(
+    `Generated ${candidates.length} failure candidate(s) in .traceback/records/failures/.`,
+  );
   console.log(`Wrote ${reportPath}`);
 }
 

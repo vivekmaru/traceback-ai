@@ -47,6 +47,7 @@ const rawBundle: RawPullRequestBundle = {
       path: "src/auth.ts",
       line: 42,
       original_line: 39,
+      in_reply_to_id: 1999,
       commit_id: "abc123",
       created_at: "2026-05-02T03:00:00Z",
       updated_at: "2026-05-02T03:05:00Z",
@@ -108,6 +109,7 @@ describe("normalizePullRequestRecord", () => {
       author: "github-actions[bot]",
       path: "src/auth.ts",
       line: 42,
+      inReplyToId: 1999,
     });
     expect(record.reviews[0]).toMatchObject({
       id: 3001,
