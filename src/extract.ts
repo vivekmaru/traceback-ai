@@ -28,6 +28,8 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bregression\b/i,
   /\broot cause\b/i,
   /\bmissing\b/i,
+  /\bomits?\b/i,
+  /\bomitted\b/i,
   /\bfails?\b/i,
   /\bincorrect\b/i,
   /\bunsafe\b/i,
@@ -44,6 +46,14 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bRangeError\b/i,
   /\bmalformed\b/i,
   /\btampered\b/i,
+  /\bresets?\b/i,
+  /\boverwrites?\b/i,
+  /\boverwritten\b/i,
+  /\bsensitive\b/i,
+  /\bforwards?\b.*\bheaders?\b/i,
+  /\bheaders?\b.*\bforwarded\b/i,
+  /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+  /\bdoesn['’]?t (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
 ];
 
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [

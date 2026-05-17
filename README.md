@@ -74,6 +74,21 @@ Imported data includes PR metadata, issue comments, review comments, reviews,
 basic diff/file stats, and simple candidate AI/agent markers found in bodies,
 comments, reviews, and authors.
 
+For private repositories, export a GitHub token before importing. If you are
+already authenticated with the GitHub CLI, this is usually enough:
+
+```bash
+export GITHUB_TOKEN="$(gh auth token)"
+traceback import --prs 20
+```
+
+When running the built CLI directly:
+
+```bash
+export GITHUB_TOKEN="$(gh auth token)"
+/Users/vivek/dev/agentfail/dist/cli.js import --prs 20
+```
+
 ### `traceback report`
 
 Reads `.traceback/records/` and writes:
@@ -105,6 +120,10 @@ the source comment or review URL. The extractor scans PR bodies, issue comments,
 review comments, and reviews for conservative keyword findings such as regressions,
 lost query state, hardcoded environment contracts, preview/output mismatches,
 security/privacy risks, parser permissiveness, and user input loss.
+
+The deterministic extractor is tuned for review findings like renderer output
+omissions, user input resets during refetch, sensitive auth/header forwarding,
+query state drops, and render-time side effects.
 
 The extraction is intentionally heuristic. It assigns candidate categories,
 rough severity when priority badges or priority words are present, confidence,
