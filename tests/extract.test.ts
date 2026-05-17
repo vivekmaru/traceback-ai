@@ -224,6 +224,45 @@ describe("extractFailureCandidates", () => {
 
     expect(extractFailureCandidates([record])).toEqual([]);
   });
+
+  test("extracts EventSnaps renderer parity omissions", () => {
+    const record = recordWithReviewComment(
+      "Backend PNG renderer omits eventDate and footer fields that are shown in the preview customization UI.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      candidateCategory: "preview_output_parity_failure",
+      sourceType: "review_comment",
+    });
+  });
+
+  test("extracts EventSnaps user input loss during refetch", () => {
+    const record = recordWithReviewComment(
+      "Template modal resets text edits when React Query refetches while the user is editing.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      candidateCategory: "user_input_loss",
+      sourceType: "review_comment",
+    });
+  });
+
+  test("extracts EventSnaps auth header forwarding as security risk", () => {
+    const record = recordWithReviewComment(
+      "Sensitive authorization and cookie headers are forwarded to the third-party analytics proxy.",
+    );
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      candidateCategory: "security_privacy_regression",
+      sourceType: "review_comment",
+    });
+  });
 });
 
 describe("deterministic extraction helpers", () => {
@@ -269,3 +308,17 @@ describe("deterministic extraction helpers", () => {
     );
   });
 });
+
+function recordWithReviewComment(body: string): NormalizedPullRequestRecord {
+  return {
+    ...baseRecord,
+    issueComments: [],
+    reviewComments: [
+      {
+        ...baseRecord.reviewComments[0],
+        body,
+      },
+    ],
+    reviews: [],
+  };
+}
