@@ -184,6 +184,207 @@ describe("runReview", () => {
     }
   });
 
+  test("conservative policy emits singleton decisions only for partially unclustered candidate IDs", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "enriched-partial-candidate-coverage",
+          sourceCandidateIds: [
+            "failure-pr-91-review_comment-3241022371",
+            "failure-pr-91-review_comment-3241022372",
+          ],
+          sourcePrs: [91],
+          sourceComments: ["https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022371"],
+          confidence: "high",
+        }),
+      ],
+      clusters: [
+        cluster({
+          id: "cluster-template-intent-preservation-91",
+          candidateIds: ["failure-pr-91-review_comment-3241022371"],
+          sourcePrs: [91],
+          confidence: "high",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const singleton = decisions.decisions.find((decision: any) => decision.itemType === "singleton");
+
+      expect(decisions.decisions).toHaveLength(2);
+      expect(singleton).toMatchObject({
+        id: "review-singleton-enriched-partial-candidate-coverage",
+        sourceCandidateIds: ["failure-pr-91-review_comment-3241022372"],
+        decision: "needs_cluster",
+      });
+      expect(singleton.sourceCandidateIds).not.toContain("failure-pr-91-review_comment-3241022371");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("conservative policy flags duplicate cluster IDs without duplicating review decision IDs", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "failure-pr-91-review_comment-3241022371",
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        enrichedRecord({
+          id: "failure-pr-92-review_comment-3241022372",
+          sourceCandidateIds: ["failure-pr-92-review_comment-3241022372"],
+          sourcePrs: [92],
+        }),
+      ],
+      clusters: [
+        cluster({
+          id: "duplicate-cluster",
+          candidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        cluster({
+          id: "duplicate-cluster",
+          candidateIds: ["failure-pr-92-review_comment-3241022372"],
+          sourcePrs: [92],
+        }),
+      ],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const decisionIds = decisions.decisions.map((decision: any) => decision.id);
+      const duplicateWarning = decisions.decisions.find((decision: any) =>
+        decision.id === "review-warning-duplicate-cluster-id-duplicate-cluster"
+      );
+
+      expect(new Set(decisionIds).size).toBe(decisionIds.length);
+      expect(decisionIds).toContain("review-cluster-duplicate-cluster-1");
+      expect(decisionIds).toContain("review-cluster-duplicate-cluster-2");
+      expect(duplicateWarning).toMatchObject({
+        itemType: "warning",
+        sourceClusterId: "duplicate-cluster",
+        decision: "needs_review",
+        reason: expect.stringContaining("Duplicate cluster ID"),
+      });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("conservative policy preserves colliding enriched record IDs with disambiguated decisions", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "duplicate-enriched-record",
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+          title: "First duplicate record",
+        }),
+        enrichedRecord({
+          id: "duplicate-enriched-record",
+          sourceCandidateIds: ["failure-pr-92-review_comment-3241022372"],
+          sourcePrs: [92],
+          title: "Second duplicate record",
+        }),
+      ],
+      clusters: [],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const singletonIds = decisions.decisions
+        .filter((decision: any) => decision.itemType === "singleton")
+        .map((decision: any) => decision.id);
+      const duplicateWarning = decisions.decisions.find((decision: any) =>
+        decision.id === "review-warning-duplicate-enriched-record-id-duplicate-enriched-record"
+      );
+
+      expect(singletonIds).toEqual([
+        "review-singleton-duplicate-enriched-record-1",
+        "review-singleton-duplicate-enriched-record-2",
+      ]);
+      expect(duplicateWarning).toMatchObject({
+        itemType: "warning",
+        sourceEnrichedRecordId: "duplicate-enriched-record",
+        sourceCandidateIds: [
+          "failure-pr-91-review_comment-3241022371",
+          "failure-pr-92-review_comment-3241022372",
+        ],
+        decision: "needs_review",
+        reason: expect.stringContaining("Duplicate enriched record ID"),
+      });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("conservative policy flags candidate IDs reused across enriched records", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "first-owner",
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+          sourceComments: ["https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022371"],
+        }),
+        enrichedRecord({
+          id: "second-owner",
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+          sourceComments: ["https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022372"],
+        }),
+      ],
+      clusters: [
+        cluster({
+          id: "cluster-template-intent-preservation-91",
+          candidateIds: ["failure-pr-91-review_comment-3241022371"],
+          confidence: "high",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const clusterDecision = decisions.decisions.find((decision: any) => decision.itemType === "cluster");
+
+      expect(clusterDecision).toMatchObject({
+        decision: "needs_review",
+        reason: expect.stringContaining("multiple enriched records"),
+        sourceComments: [
+          "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022371",
+          "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022372",
+        ],
+      });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("conservative policy preserves enriched records with no source candidate IDs", async () => {
     const repoRoot = await repoWithAnalysisRun({
       runId: "2026-05-18T11-35-13Z",

@@ -147,32 +147,92 @@ function buildConservativeDecisions({
   warnings: AnalysisValidationWarning[];
 }): ReviewDecision[] {
   const recordsByCandidateId = mapRecordsByCandidateId(enrichedRecords);
-  const decisions = clusters.map((cluster) =>
-    decisionFromCluster({ runId, reviewedAt, cluster, recordsByCandidateId }),
-  );
-  const emittedEnrichedRecordIds = new Set<string>();
+  const recordsById = mapRecordsById(enrichedRecords);
+  const duplicateClusterIds = findDuplicateValues(clusters.map((cluster) => cluster.id));
+  const duplicateEnrichedRecordIds = findDuplicateValues(enrichedRecords.map((record) => record.id));
+  const clusterIdCounts = countBy(clusters, (cluster) => cluster.id);
+  const clusterIdIndexes = new Map<string, number>();
+  const decisions: ReviewDecision[] = [];
+  const emittedEnrichedRecordKeys = new Set<string>();
   const warningsByRecordId = groupWarningsByRecordId(warnings);
 
+  for (const duplicateClusterId of duplicateClusterIds) {
+    decisions.push(decisionFromDuplicateClusterIdWarning({ runId, reviewedAt, clusterId: duplicateClusterId }));
+  }
+
+  for (const duplicateRecordId of duplicateEnrichedRecordIds) {
+    decisions.push(
+      decisionFromDuplicateEnrichedRecordIdWarning({
+        runId,
+        reviewedAt,
+        recordId: duplicateRecordId,
+        records: recordsById.get(duplicateRecordId) ?? [],
+      }),
+    );
+  }
+
+  for (const cluster of clusters) {
+    const nextIndex = (clusterIdIndexes.get(cluster.id) ?? 0) + 1;
+    clusterIdIndexes.set(cluster.id, nextIndex);
+    const clusterIdSuffix = (clusterIdCounts.get(cluster.id) ?? 0) > 1 ? String(nextIndex) : null;
+    decisions.push(
+      decisionFromCluster({
+        runId,
+        reviewedAt,
+        cluster,
+        recordsByCandidateId,
+        idSuffix: clusterIdSuffix,
+        hasDuplicateClusterId: duplicateClusterIds.has(cluster.id),
+      }),
+    );
+  }
+
   for (const [enrichedRecordId, recordWarnings] of warningsByRecordId) {
-    const record = enrichedRecords.find((item) => item.id === enrichedRecordId);
-    if (!record) {
+    const records = recordsById.get(enrichedRecordId) ?? [];
+    if (records.length === 0) {
       for (const warning of recordWarnings) {
         decisions.push(decisionFromWarning({ runId, reviewedAt, warning }));
       }
       continue;
     }
 
-    decisions.push(decisionFromUnclusteredRecord({ runId, reviewedAt, record }));
-    emittedEnrichedRecordIds.add(record.id);
+    const unclusteredCandidateIds = new Set(recordWarnings.map((warning) => warning.sourceCandidateId));
+    records.forEach((record, index) => {
+      const recordUnclusteredCandidateIds = record.sourceCandidateIds.filter((candidateId) =>
+        unclusteredCandidateIds.has(candidateId),
+      );
+      if (recordUnclusteredCandidateIds.length === 0) {
+        return;
+      }
+
+      const recordKey = enrichedRecordKey(record, index);
+      decisions.push(
+        decisionFromUnclusteredRecord({
+          runId,
+          reviewedAt,
+          record,
+          sourceCandidateIds: recordUnclusteredCandidateIds,
+          idSuffix: records.length > 1 ? String(index + 1) : null,
+        }),
+      );
+      emittedEnrichedRecordKeys.add(recordKey);
+    });
   }
 
-  for (const record of enrichedRecords) {
-    if (record.sourceCandidateIds.length > 0 || emittedEnrichedRecordIds.has(record.id)) {
-      continue;
+  enrichedRecords.forEach((record, index) => {
+    if (record.sourceCandidateIds.length > 0 || emittedEnrichedRecordKeys.has(enrichedRecordKey(record, index))) {
+      return;
     }
 
-    decisions.push(decisionFromSourcelessRecord({ runId, reviewedAt, record }));
-  }
+    decisions.push(
+      decisionFromSourcelessRecord({
+        runId,
+        reviewedAt,
+        record,
+        idSuffix: (recordsById.get(record.id)?.length ?? 0) > 1 ? String(index + 1) : null,
+      }),
+    );
+  });
 
   return decisions;
 }
@@ -182,21 +242,32 @@ function decisionFromCluster({
   reviewedAt,
   cluster,
   recordsByCandidateId,
+  idSuffix,
+  hasDuplicateClusterId,
 }: {
   runId: string;
   reviewedAt: string;
   cluster: FailureCluster;
-  recordsByCandidateId: Map<string, EnrichedFailureRecord>;
+  recordsByCandidateId: Map<string, EnrichedFailureRecord[]>;
+  idSuffix: string | null;
+  hasDuplicateClusterId: boolean;
 }): ReviewDecision {
-  const relatedRecords = cluster.candidateIds
-    .map((candidateId) => recordsByCandidateId.get(candidateId))
-    .filter((record): record is EnrichedFailureRecord => Boolean(record));
+  const recordMatches = cluster.candidateIds.map((candidateId) => ({
+    candidateId,
+    records: recordsByCandidateId.get(candidateId) ?? [],
+  }));
+  const relatedRecords = uniqueRecords(recordMatches.flatMap((match) => match.records));
   const sourceComments = uniqueStrings(relatedRecords.flatMap((record) => record.sourceComments));
-  const hasInvalidReference = relatedRecords.length !== cluster.candidateIds.length;
-  const decision = decideCluster(cluster, hasInvalidReference);
+  const hasMissingCandidate = recordMatches.some((match) => match.records.length === 0);
+  const hasDuplicateCandidateOwnership = recordMatches.some((match) => match.records.length > 1);
+  const decision = decideCluster(cluster, {
+    hasMissingCandidate,
+    hasDuplicateCandidateOwnership,
+    hasDuplicateClusterId,
+  });
 
   return {
-    id: `review-cluster-${cluster.id}`,
+    id: `review-cluster-${cluster.id}${idSuffix ? `-${idSuffix}` : ""}`,
     runId,
     itemType: "cluster",
     sourceClusterId: cluster.id,
@@ -220,25 +291,32 @@ function decisionFromUnclusteredRecord({
   runId,
   reviewedAt,
   record,
+  sourceCandidateIds,
+  idSuffix,
 }: {
   runId: string;
   reviewedAt: string;
   record: EnrichedFailureRecord;
+  sourceCandidateIds: string[];
+  idSuffix: string | null;
 }): ReviewDecision {
   return {
-    id: `review-singleton-${record.id}`,
+    id: `review-singleton-${record.id}${idSuffix ? `-${idSuffix}` : ""}`,
     runId,
     itemType: "singleton",
     sourceClusterId: null,
     sourceEnrichedRecordId: record.id,
-    sourceCandidateIds: record.sourceCandidateIds,
+    sourceCandidateIds,
     sourcePrs: record.sourcePrs,
     sourceComments: record.sourceComments,
     title: record.title,
     preventionRule: record.preventionRule,
     confidence: record.confidence,
     decision: "needs_cluster",
-    reason: `Enriched record ${record.id} is not represented in any cluster.`,
+    reason:
+      sourceCandidateIds.length === record.sourceCandidateIds.length
+        ? `Enriched record ${record.id} is not represented in any cluster.`
+        : `Enriched record ${record.id} has source candidates that are not represented in any cluster.`,
     editedTitle: null,
     editedPreventionRule: null,
     notes: ["Unclustered enriched record preserved for review; no rule generation should consume it yet."],
@@ -250,13 +328,15 @@ function decisionFromSourcelessRecord({
   runId,
   reviewedAt,
   record,
+  idSuffix,
 }: {
   runId: string;
   reviewedAt: string;
   record: EnrichedFailureRecord;
+  idSuffix: string | null;
 }): ReviewDecision {
   return {
-    id: `review-enriched-record-${record.id}`,
+    id: `review-enriched-record-${record.id}${idSuffix ? `-${idSuffix}` : ""}`,
     runId,
     itemType: "enriched_record",
     sourceClusterId: null,
@@ -306,11 +386,91 @@ function decisionFromWarning({
   };
 }
 
+function decisionFromDuplicateClusterIdWarning({
+  runId,
+  reviewedAt,
+  clusterId,
+}: {
+  runId: string;
+  reviewedAt: string;
+  clusterId: string;
+}): ReviewDecision {
+  return {
+    id: `review-warning-duplicate-cluster-id-${clusterId}`,
+    runId,
+    itemType: "warning",
+    sourceClusterId: clusterId,
+    sourceEnrichedRecordId: null,
+    sourceCandidateIds: [],
+    sourcePrs: [],
+    sourceComments: [],
+    title: "Duplicate cluster ID",
+    preventionRule: "",
+    confidence: "unknown",
+    decision: "needs_review",
+    reason: `Duplicate cluster ID ${clusterId} appears more than once in analysis output.`,
+    editedTitle: null,
+    editedPreventionRule: null,
+    notes: ["duplicate_cluster_id"],
+    reviewedAt,
+  };
+}
+
+function decisionFromDuplicateEnrichedRecordIdWarning({
+  runId,
+  reviewedAt,
+  recordId,
+  records,
+}: {
+  runId: string;
+  reviewedAt: string;
+  recordId: string;
+  records: EnrichedFailureRecord[];
+}): ReviewDecision {
+  return {
+    id: `review-warning-duplicate-enriched-record-id-${recordId}`,
+    runId,
+    itemType: "warning",
+    sourceClusterId: null,
+    sourceEnrichedRecordId: recordId,
+    sourceCandidateIds: uniqueStrings(records.flatMap((record) => record.sourceCandidateIds)),
+    sourcePrs: uniqueNumbers(records.flatMap((record) => record.sourcePrs)),
+    sourceComments: uniqueStrings(records.flatMap((record) => record.sourceComments)),
+    title: "Duplicate enriched record ID",
+    preventionRule: "",
+    confidence: "unknown",
+    decision: "needs_review",
+    reason: `Duplicate enriched record ID ${recordId} appears more than once in analysis output.`,
+    editedTitle: null,
+    editedPreventionRule: null,
+    notes: ["duplicate_enriched_record_id"],
+    reviewedAt,
+  };
+}
+
 function decideCluster(
   cluster: FailureCluster,
-  hasInvalidReference: boolean,
+  issues: {
+    hasMissingCandidate: boolean;
+    hasDuplicateCandidateOwnership: boolean;
+    hasDuplicateClusterId: boolean;
+  },
 ): { value: ReviewDecisionValue; reason: string } {
-  if (hasInvalidReference) {
+  if (issues.hasDuplicateClusterId) {
+    return {
+      value: "needs_review",
+      reason: "Cluster ID appears more than once in analysis output.",
+    };
+  }
+
+  if (issues.hasDuplicateCandidateOwnership) {
+    return {
+      value: "needs_review",
+      reason: "Cluster references candidate IDs that are owned by multiple enriched records.",
+    };
+  }
+
+  if (issues.hasMissingCandidate) {
     return {
       value: "needs_review",
       reason: "Cluster references candidate IDs that are missing from enriched records.",
@@ -429,14 +589,26 @@ function renderDecisionList(
 
 function mapRecordsByCandidateId(
   enrichedRecords: EnrichedFailureRecord[],
-): Map<string, EnrichedFailureRecord> {
-  const recordsByCandidateId = new Map<string, EnrichedFailureRecord>();
+): Map<string, EnrichedFailureRecord[]> {
+  const recordsByCandidateId = new Map<string, EnrichedFailureRecord[]>();
   for (const record of enrichedRecords) {
     for (const candidateId of record.sourceCandidateIds) {
-      recordsByCandidateId.set(candidateId, record);
+      const current = recordsByCandidateId.get(candidateId) ?? [];
+      current.push(record);
+      recordsByCandidateId.set(candidateId, current);
     }
   }
   return recordsByCandidateId;
+}
+
+function mapRecordsById(enrichedRecords: EnrichedFailureRecord[]): Map<string, EnrichedFailureRecord[]> {
+  const recordsById = new Map<string, EnrichedFailureRecord[]>();
+  for (const record of enrichedRecords) {
+    const current = recordsById.get(record.id) ?? [];
+    current.push(record);
+    recordsById.set(record.id, current);
+  }
+  return recordsById;
 }
 
 function groupWarningsByRecordId(
@@ -461,6 +633,39 @@ function isPrBodyCandidateId(candidateId: string): boolean {
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values)].sort();
+}
+
+function uniqueNumbers(values: number[]): number[] {
+  return [...new Set(values)].sort((a, b) => a - b);
+}
+
+function uniqueRecords(records: EnrichedFailureRecord[]): EnrichedFailureRecord[] {
+  const seen = new Set<EnrichedFailureRecord>();
+  const unique: EnrichedFailureRecord[] = [];
+  for (const record of records) {
+    if (seen.has(record)) {
+      continue;
+    }
+    seen.add(record);
+    unique.push(record);
+  }
+  return unique;
+}
+
+function findDuplicateValues(values: string[]): Set<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) {
+      duplicates.add(value);
+    }
+    seen.add(value);
+  }
+  return duplicates;
+}
+
+function enrichedRecordKey(record: EnrichedFailureRecord, index: number): string {
+  return `${record.id}:${index}`;
 }
 
 function countBy<T>(items: T[], getKey: (item: T) => string): Map<string, number> {
