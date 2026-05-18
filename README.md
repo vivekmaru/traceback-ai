@@ -3,7 +3,8 @@
 Traceback AI converts AI mistakes, fixes, and PR noise into useful local signal for
 future agent instructions. The current CLI imports recent GitHub pull request
 data into local files, then extracts deterministic candidate failure records
-without calling an LLM.
+without calling an LLM. It can optionally enrich those deterministic candidates
+with an OpenAI analysis run.
 
 ## Requirements
 
@@ -27,6 +28,8 @@ bun run traceback init
 bun run traceback import --prs 5
 bun run traceback report
 bun run traceback extract
+bun run traceback analyze --dry-run
+bun run traceback analyze --provider openai
 ```
 
 After building, the bundled CLI is available at `dist/cli.js`:
@@ -37,6 +40,8 @@ bun run build
 ./dist/cli.js import --prs 5
 ./dist/cli.js report
 ./dist/cli.js extract
+./dist/cli.js analyze --dry-run
+./dist/cli.js analyze --provider openai
 ```
 
 ## Commands
@@ -50,6 +55,8 @@ Creates the local Traceback AI working directory:
 ├── imports/
 ├── records/
 │   └── failures/
+├── analysis/
+│   └── runs/
 └── reports/
 ```
 
@@ -148,13 +155,107 @@ status hints from nearby replies, and detected AI/agent markers. Re-running
 `traceback extract` refreshes `.traceback/records/failures/` instead of appending
 duplicates.
 
+### `traceback analyze --dry-run`
+
+Reads deterministic failure candidates from:
+
+```text
+.traceback/records/failures/
+```
+
+Then writes a fresh local analysis run without calling any model provider:
+
+```text
+.traceback/analysis/runs/<runId>/
+├── manifest.json
+├── input.json
+└── prompt.md
+```
+
+Dry-run mode is useful for reviewing exactly what would be sent to an AI provider.
+It does not read raw PR import data directly; it only packages the deterministic
+failure candidates produced by `traceback extract`.
+
+The generated `input.json` is intentionally compact. It includes candidate IDs,
+source PR numbers and URLs, source comment URLs when available, source type,
+deterministic category/severity/confidence/status, evidence excerpts, detected
+agent markers, and a short surrounding summary for grouping.
+
+### `traceback analyze --provider openai`
+
+Reads the current deterministic failure candidates from
+`.traceback/records/failures/`, generates a fresh analysis run, sends the generated
+prompt/input to OpenAI, and writes the provider response plus split local outputs:
+
+```text
+.traceback/analysis/runs/<runId>/
+├── manifest.json
+├── input.json
+├── prompt.md
+├── response.json
+├── enriched-records.json
+├── clusters.json
+└── analysis-summary.md
+```
+
+Set `OPENAI_API_KEY` before running provider mode:
+
+```bash
+export OPENAI_API_KEY="..."
+traceback analyze --provider openai
+```
+
+`TRACEBACK_OPENAI_MODEL` can override the default model. `OPENAI_MODEL` is also
+respected when `TRACEBACK_OPENAI_MODEL` is not set.
+
+Provider mode prints a warning before sending selected local PR/comment evidence
+to OpenAI. If `OPENAI_API_KEY` is missing, it fails clearly after preserving the
+generated `manifest.json`, `input.json`, and `prompt.md` in the run directory for
+debugging.
+
+`enriched-records.json` contains records with:
+
+- `id`
+- `sourceCandidateIds`
+- `title`
+- `failureType`
+- `summary`
+- `whatTheAgentMissed`
+- `evidenceSummary`
+- `likelyFixOrCorrection`
+- `preventionRule`
+- `confidence`
+- `sourcePrs`
+- `sourceComments`
+- `notes`
+
+`clusters.json` contains related candidate groups with:
+
+- `id`
+- `title`
+- `summary`
+- `candidateIds`
+- `failureTypes`
+- `sourcePrs`
+- `evidenceSummary`
+- `whatTheAgentMissed`
+- `preventionRule`
+- `confidence`
+
+Traceback validates that AI outputs only reference known deterministic candidate
+IDs before writing the split analysis artifacts.
+
 ## Privacy Model
 
 Traceback AI is local-only:
 
 - Raw data stays under `.traceback/`.
-- Nothing is uploaded by Traceback AI.
-- No LLM calls are made.
+- `traceback init`, `traceback import`, `traceback report`, `traceback extract`,
+  and `traceback analyze --dry-run` do not send failure candidates to an LLM.
+- `traceback analyze --provider openai` sends only the deterministic failure
+  candidates and generated prompt for the current run to OpenAI.
+- Provider mode never replays an arbitrary old dry-run prompt; it generates a
+  fresh run from current `.traceback/records/failures/` state.
 - No hosted service, GitHub App, local web UI, or TUI is started.
 - Repo instruction files such as `AGENTS.md` are not generated or modified.
 
@@ -176,11 +277,14 @@ bun run build
 - The importer fetches recent PRs by GitHub's updated ordering.
 - Candidate AI/agent markers are heuristics, not classification.
 - Failure candidates are deterministic signals, not final AI classification.
-- Traceback does not generate prevention rules yet.
+- Traceback does not generate or apply repo instruction files from prevention
+  rules yet.
+- OpenAI analysis output is written locally for review; it is not treated as an
+  automatic source of repo instructions.
 
 ## Next Steps
 
-- Add AI-assisted analysis that converts candidate evidence into reviewed failure records.
+- Convert AI-assisted analysis into reviewed failure records.
 - Improve accepted, rejected, contested, and resolved status detection from review threads.
 - Generate proposed repo-specific agent instructions for user review.
 - Add a tiny local review UI after the local file loop proves useful.
