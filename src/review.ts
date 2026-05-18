@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { findAnalysisValidationWarnings } from "./analyze";
+import { assertSafeRunId } from "./run-id";
 import { getTracebackPaths } from "./storage";
 import type {
   AnalysisOutput,
@@ -80,6 +81,7 @@ export async function runReview(
   if (options.policy !== "conservative") {
     throw new Error("Only --policy conservative is supported.");
   }
+  assertSafeRunId(options.runId);
 
   const paths = getTracebackPaths(repoRoot);
   const runDir = path.join(paths.analysisRuns, options.runId);
@@ -148,15 +150,28 @@ function buildConservativeDecisions({
   const decisions = clusters.map((cluster) =>
     decisionFromCluster({ runId, reviewedAt, cluster, recordsByCandidateId }),
   );
+  const emittedEnrichedRecordIds = new Set<string>();
+  const warningsByRecordId = groupWarningsByRecordId(warnings);
 
-  for (const warning of warnings) {
-    const record = enrichedRecords.find((item) => item.id === warning.enrichedRecordId);
+  for (const [enrichedRecordId, recordWarnings] of warningsByRecordId) {
+    const record = enrichedRecords.find((item) => item.id === enrichedRecordId);
     if (!record) {
-      decisions.push(decisionFromWarning({ runId, reviewedAt, warning }));
+      for (const warning of recordWarnings) {
+        decisions.push(decisionFromWarning({ runId, reviewedAt, warning }));
+      }
       continue;
     }
 
-    decisions.push(decisionFromUnclusteredRecord({ runId, reviewedAt, record, warning }));
+    decisions.push(decisionFromUnclusteredRecord({ runId, reviewedAt, record }));
+    emittedEnrichedRecordIds.add(record.id);
+  }
+
+  for (const record of enrichedRecords) {
+    if (record.sourceCandidateIds.length > 0 || emittedEnrichedRecordIds.has(record.id)) {
+      continue;
+    }
+
+    decisions.push(decisionFromSourcelessRecord({ runId, reviewedAt, record }));
   }
 
   return decisions;
@@ -205,12 +220,10 @@ function decisionFromUnclusteredRecord({
   runId,
   reviewedAt,
   record,
-  warning,
 }: {
   runId: string;
   reviewedAt: string;
   record: EnrichedFailureRecord;
-  warning: AnalysisValidationWarning;
 }): ReviewDecision {
   return {
     id: `review-singleton-${record.id}`,
@@ -225,10 +238,40 @@ function decisionFromUnclusteredRecord({
     preventionRule: record.preventionRule,
     confidence: record.confidence,
     decision: "needs_cluster",
-    reason: warning.message,
+    reason: `Enriched record ${record.id} is not represented in any cluster.`,
     editedTitle: null,
     editedPreventionRule: null,
     notes: ["Unclustered enriched record preserved for review; no rule generation should consume it yet."],
+    reviewedAt,
+  };
+}
+
+function decisionFromSourcelessRecord({
+  runId,
+  reviewedAt,
+  record,
+}: {
+  runId: string;
+  reviewedAt: string;
+  record: EnrichedFailureRecord;
+}): ReviewDecision {
+  return {
+    id: `review-enriched-record-${record.id}`,
+    runId,
+    itemType: "enriched_record",
+    sourceClusterId: null,
+    sourceEnrichedRecordId: record.id,
+    sourceCandidateIds: [],
+    sourcePrs: record.sourcePrs,
+    sourceComments: record.sourceComments,
+    title: record.title,
+    preventionRule: record.preventionRule,
+    confidence: record.confidence,
+    decision: "needs_review",
+    reason: `Enriched record ${record.id} does not reference any source candidates.`,
+    editedTitle: null,
+    editedPreventionRule: null,
+    notes: ["Record preserved because it cannot be traced back to deterministic candidates."],
     reviewedAt,
   };
 }
@@ -394,6 +437,18 @@ function mapRecordsByCandidateId(
     }
   }
   return recordsByCandidateId;
+}
+
+function groupWarningsByRecordId(
+  warnings: AnalysisValidationWarning[],
+): Map<string, AnalysisValidationWarning[]> {
+  const warningsByRecordId = new Map<string, AnalysisValidationWarning[]>();
+  for (const warning of warnings) {
+    const current = warningsByRecordId.get(warning.enrichedRecordId) ?? [];
+    current.push(warning);
+    warningsByRecordId.set(warning.enrichedRecordId, current);
+  }
+  return warningsByRecordId;
 }
 
 function isReviewCommentCandidateId(candidateId: string): boolean {

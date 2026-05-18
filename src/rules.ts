@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { assertSafeRunId } from "./run-id";
 import { getTracebackPaths } from "./storage";
 import type { ReviewDecision, ReviewDecisionValue, ReviewDecisionsFile } from "./review";
 
@@ -53,6 +54,7 @@ export async function runRulesDraft(
   repoRoot: string,
   options: RunRulesDraftOptions,
 ): Promise<RulesDraftResult> {
+  assertSafeRunId(options.runId);
   const paths = getTracebackPaths(repoRoot);
   const reviewDir = path.join(paths.reviews, options.runId);
   const decisionsPath = path.join(reviewDir, "decisions.json");

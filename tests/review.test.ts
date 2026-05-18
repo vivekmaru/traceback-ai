@@ -138,6 +138,104 @@ describe("runReview", () => {
       await rm(repoRoot, { recursive: true, force: true });
     }
   });
+
+  test("conservative policy emits one singleton decision for a multi-candidate unclustered record", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "enriched-multi-candidate",
+          sourceCandidateIds: [
+            "failure-pr-93-review_comment-3248177660",
+            "failure-pr-93-review_comment-3248177661",
+          ],
+          sourcePrs: [93],
+          sourceComments: [
+            "https://github.com/vivekmaru/EventSnaps/pull/93#discussion_r3248177660",
+            "https://github.com/vivekmaru/EventSnaps/pull/93#discussion_r3248177661",
+          ],
+          confidence: "high",
+          title: "Restore environment-aware pricing source URL",
+        }),
+      ],
+      clusters: [],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      expect(decisions.decisions).toHaveLength(1);
+      expect(decisions.decisions[0]).toMatchObject({
+        id: "review-singleton-enriched-multi-candidate",
+        sourceEnrichedRecordId: "enriched-multi-candidate",
+        sourceCandidateIds: [
+          "failure-pr-93-review_comment-3248177660",
+          "failure-pr-93-review_comment-3248177661",
+        ],
+        decision: "needs_cluster",
+      });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("conservative policy preserves enriched records with no source candidate IDs", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "enriched-without-candidates",
+          sourceCandidateIds: [],
+          sourcePrs: [93],
+          sourceComments: [],
+          confidence: "high",
+          title: "Record without source candidates",
+        }),
+      ],
+      clusters: [],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      expect(decisions.decisions).toHaveLength(1);
+      expect(decisions.decisions[0]).toMatchObject({
+        itemType: "enriched_record",
+        sourceEnrichedRecordId: "enriched-without-candidates",
+        sourceCandidateIds: [],
+        decision: "needs_review",
+        reason: expect.stringContaining("does not reference any source candidates"),
+      });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects run IDs that would escape the reviews directory", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-review-"));
+
+    try {
+      await expect(
+        runReview(repoRoot, {
+          runId: "../../pwn",
+          policy: "conservative",
+          now: new Date("2026-05-18T12:00:00Z"),
+        }),
+      ).rejects.toThrow("Invalid run ID");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 async function repoWithAnalysisRun({

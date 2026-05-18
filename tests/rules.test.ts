@@ -143,6 +143,21 @@ describe("runRulesDraft", () => {
       await rm(repoRoot, { recursive: true, force: true });
     }
   });
+
+  test("rejects run IDs that would escape the rules directory", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-rules-"));
+
+    try {
+      await expect(
+        runRulesDraft(repoRoot, {
+          runId: "../../pwn",
+          now: new Date("2026-05-18T13:00:00Z"),
+        }),
+      ).rejects.toThrow("Invalid run ID");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 async function repoWithReviewDecisions({
