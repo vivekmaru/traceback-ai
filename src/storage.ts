@@ -12,6 +12,7 @@ export type TracebackPaths = {
   records: string;
   failures: string;
   reports: string;
+  analysisRuns: string;
 };
 
 export function getTracebackPaths(repoRoot: string): TracebackPaths {
@@ -23,6 +24,7 @@ export function getTracebackPaths(repoRoot: string): TracebackPaths {
     records: path.join(dir, "records"),
     failures: path.join(dir, "records", "failures"),
     reports: path.join(dir, "reports"),
+    analysisRuns: path.join(dir, "analysis", "runs"),
   };
 }
 
@@ -33,6 +35,7 @@ export async function initTraceback(repoRoot: string): Promise<TracebackPaths> {
     mkdir(paths.records, { recursive: true }),
     mkdir(paths.failures, { recursive: true }),
     mkdir(paths.reports, { recursive: true }),
+    mkdir(paths.analysisRuns, { recursive: true }),
   ]);
   return paths;
 }
