@@ -30,6 +30,8 @@ bun run traceback report
 bun run traceback extract
 bun run traceback analyze --dry-run
 bun run traceback analyze --provider openai
+bun run traceback review --run <runId> --policy conservative
+bun run traceback rules --run <runId>
 ```
 
 After building, the bundled CLI is available at `dist/cli.js`:
@@ -42,6 +44,8 @@ bun run build
 ./dist/cli.js extract
 ./dist/cli.js analyze --dry-run
 ./dist/cli.js analyze --provider openai
+./dist/cli.js review --run <runId> --policy conservative
+./dist/cli.js rules --run <runId>
 ```
 
 ## Commands
@@ -245,6 +249,79 @@ debugging.
 Traceback validates that AI outputs only reference known deterministic candidate
 IDs before writing the split analysis artifacts.
 
+The analysis report also warns when an enriched record references a source
+candidate that is not represented in any cluster. Unclustered records are not
+dropped; the review step preserves them as decisions that need clustering.
+
+### `traceback review --run <runId> --policy conservative`
+
+Reads a completed analysis run from:
+
+```text
+.traceback/analysis/runs/<runId>/
+```
+
+Then writes local, non-interactive review decisions:
+
+```text
+.traceback/reviews/<runId>/
+├── decisions.json
+└── review-summary.md
+```
+
+Review does not call an LLM, upload data, modify repository source files, or
+generate repo instruction files. It is a deterministic checkpoint between AI
+analysis and any future rule-generation command.
+
+The conservative policy writes one decision for each cluster plus singleton
+decisions for enriched records that are not represented by any cluster.
+
+Decision values include:
+
+- `accepted`
+- `accepted_singleton`
+- `needs_validation`
+- `needs_cluster`
+- `rejected`
+- `needs_review`
+- `edited`
+
+The current conservative policy is intentionally cautious:
+
+- High-confidence clusters backed by review-comment candidates become `accepted`.
+- Low-confidence PR-body-only clusters become `needs_validation`.
+- Unclustered enriched records become `needs_cluster`.
+- Missing or inconsistent source references become `needs_review`.
+- Ambiguous items default to `needs_review` or `needs_validation`, not accepted.
+
+Rules are not generated yet. Future rule generation should consume only reviewed
+and accepted decisions.
+
+### `traceback rules --run <runId>`
+
+Reads local review decisions from:
+
+```text
+.traceback/reviews/<runId>/decisions.json
+```
+
+Then writes draft rule artifacts:
+
+```text
+.traceback/rules/<runId>/
+├── draft-rules.json
+└── draft-rules.md
+```
+
+Draft rules are generated only from decisions marked `accepted`,
+`accepted_singleton`, or `edited`. Decisions such as `needs_validation`,
+`needs_cluster`, `needs_review`, and `rejected` are listed as excluded and are not
+converted into draft rules.
+
+This command is still local-only and does not modify `AGENTS.md`, repository
+instruction files, source code, GitHub, or hosted services. The generated rules
+are reviewable drafts, not applied policy.
+
 ## Privacy Model
 
 Traceback AI is local-only:
@@ -256,6 +333,10 @@ Traceback AI is local-only:
   candidates and generated prompt for the current run to OpenAI.
 - Provider mode never replays an arbitrary old dry-run prompt; it generates a
   fresh run from current `.traceback/records/failures/` state.
+- `traceback review` is local and non-interactive; it only reads analysis files
+  and writes review files under `.traceback/reviews/`.
+- `traceback rules` is local; it only reads review decisions and writes draft
+  rule files under `.traceback/rules/`.
 - No hosted service, GitHub App, local web UI, or TUI is started.
 - Repo instruction files such as `AGENTS.md` are not generated or modified.
 

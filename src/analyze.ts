@@ -71,6 +71,13 @@ export type AnalysisOutput = {
   summary: AnalysisSummary;
 };
 
+export type AnalysisValidationWarning = {
+  code: "unclustered_candidate";
+  message: string;
+  sourceCandidateId: string;
+  enrichedRecordId: string;
+};
+
 export type AnalysisProviderRequest = {
   input: AnalysisInput;
   prompt: string;
@@ -167,6 +174,7 @@ export async function runAnalysis(
     const providerClient = options.providerClient ?? callOpenAIProvider;
     const providerResult = await providerClient({ input, prompt });
     validateAnalysisOutput(providerResult.analysis, candidates);
+    const warnings = findAnalysisValidationWarnings(providerResult.analysis);
 
     await writeJson(path.join(runDir, "response.json"), providerResult.rawResponse);
     await writeJson(path.join(runDir, "enriched-records.json"), providerResult.analysis.enrichedRecords);
@@ -178,7 +186,7 @@ export async function runAnalysis(
         runId,
         mode: options.mode,
         provider: manifest.provider,
-        warnings: [],
+        warnings: warnings.map((warning) => warning.message),
       }),
       "utf8",
     );
@@ -339,6 +347,28 @@ export function parseAnalysisOutput(value: string): AnalysisOutput {
   }
 
   return parsed;
+}
+
+export function findAnalysisValidationWarnings(
+  analysis: AnalysisOutput,
+): AnalysisValidationWarning[] {
+  const clusteredCandidateIds = new Set(analysis.clusters.flatMap((cluster) => cluster.candidateIds));
+  const warnings: AnalysisValidationWarning[] = [];
+
+  for (const record of analysis.enrichedRecords) {
+    for (const sourceCandidateId of record.sourceCandidateIds) {
+      if (!clusteredCandidateIds.has(sourceCandidateId)) {
+        warnings.push({
+          code: "unclustered_candidate",
+          sourceCandidateId,
+          enrichedRecordId: record.id,
+          message: `Source candidate ${sourceCandidateId} from enriched record ${record.id} is not represented in any cluster.`,
+        });
+      }
+    }
+  }
+
+  return warnings;
 }
 
 export function generateAnalysisSummaryMarkdown(

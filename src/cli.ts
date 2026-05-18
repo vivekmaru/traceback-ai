@@ -6,6 +6,8 @@ import { findGitRoot, parseGitHubRemote, readOriginRemote } from "./git";
 import { GitHubApiError, importRecentPullRequests } from "./github";
 import { normalizePullRequestRecord } from "./normalize";
 import { generateFailureCandidatesReport, generateImportSummary } from "./report";
+import { runReview } from "./review";
+import { runRulesDraft } from "./rules";
 import {
   initTraceback,
   readImportedRecords,
@@ -48,6 +50,19 @@ program
   .option("--dry-run", "write analysis input and prompt without calling a provider")
   .option("--provider <provider>", "analysis provider to call; currently supports openai")
   .action(runAnalyze);
+
+program
+  .command("review")
+  .description("Create local review decisions for an analysis run.")
+  .requiredOption("--run <runId>", "analysis run ID to review")
+  .requiredOption("--policy <policy>", "review policy to apply; currently supports conservative")
+  .action(runReviewCommand);
+
+program
+  .command("rules")
+  .description("Generate local draft rules from reviewed decisions.")
+  .requiredOption("--run <runId>", "reviewed run ID to convert into draft rules")
+  .action(runRulesCommand);
 
 program.parseAsync().catch((error: unknown) => {
   printError(error);
@@ -121,6 +136,24 @@ async function runAnalyze(options: { dryRun?: boolean; provider?: string }): Pro
   }
 
   throw new Error("Specify --dry-run or --provider openai.");
+}
+
+async function runReviewCommand(options: { run: string; policy: string }): Promise<void> {
+  if (options.policy !== "conservative") {
+    throw new Error("Only --policy conservative is supported.");
+  }
+
+  const repoRoot = await findGitRoot();
+  const result = await runReview(repoRoot, { runId: options.run, policy: "conservative" });
+  console.log(`Wrote review decisions to ${result.decisionsPath}`);
+  console.log(`Wrote review summary to ${result.summaryPath}`);
+}
+
+async function runRulesCommand(options: { run: string }): Promise<void> {
+  const repoRoot = await findGitRoot();
+  const result = await runRulesDraft(repoRoot, { runId: options.run });
+  console.log(`Wrote draft rules to ${result.rulesPath}`);
+  console.log(`Wrote draft rules summary to ${result.markdownPath}`);
 }
 
 async function detectRepository(repoRoot: string): Promise<GitHubRepository> {
