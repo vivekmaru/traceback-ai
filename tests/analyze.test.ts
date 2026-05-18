@@ -180,6 +180,52 @@ describe("runAnalysis", () => {
     }
   });
 
+  test("provider analysis warns when enriched records are not represented in clusters", async () => {
+    const repoRoot = await repoWithFailures([candidate("failure-pr-93-review_comment-3248177660")]);
+
+    try {
+      const result = await runAnalysis(repoRoot, {
+        mode: "provider",
+        provider: "openai",
+        now: new Date("2026-05-17T10:15:00Z"),
+        providerClient: async ({ input }) => ({
+          rawResponse: { id: "resp_unclustered" },
+          analysis: {
+            enrichedRecords: input.failureCandidates.map((item) => ({
+              id: item.id,
+              sourceCandidateIds: [item.id],
+              title: "Restore environment-aware pricing source URL",
+              failureType: "environment_config_contract_violation",
+              summary: "The production URL was hardcoded.",
+              whatTheAgentMissed: "The agent missed the environment contract.",
+              evidenceSummary: item.evidenceExcerpt,
+              likelyFixOrCorrection: "Use APP_URL.",
+              preventionRule: "Derive app URLs from environment configuration.",
+              confidence: "high",
+              sourcePrs: [item.sourcePrNumber],
+              sourceComments: item.sourceCommentUrl ? [item.sourceCommentUrl] : [],
+              notes: [],
+            })),
+            clusters: [],
+            summary: {
+              overview: "One enriched record was not clustered.",
+              highestRiskPatterns: ["Environment contracts"],
+              recommendedNextActions: ["Review unclustered records."],
+            },
+          },
+        }),
+      });
+
+      const summary = await readFile(path.join(result.runDir, "analysis-summary.md"), "utf8");
+
+      expect(summary).toContain("## Warnings");
+      expect(summary).toContain("failure-pr-93-review_comment-3248177660");
+      expect(summary).toContain("not represented in any cluster");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("uses a stable records hash for the same candidates regardless of file write order", async () => {
     const firstRepo = await repoWithFailures([
       candidate("failure-pr-42-review_comment-7"),

@@ -15,6 +15,8 @@ describe("getTracebackPaths", () => {
       failures: "/tmp/example-repo/.traceback/records/failures",
       reports: "/tmp/example-repo/.traceback/reports",
       analysisRuns: "/tmp/example-repo/.traceback/analysis/runs",
+      reviews: "/tmp/example-repo/.traceback/reviews",
+      rules: "/tmp/example-repo/.traceback/rules",
     });
   });
 
