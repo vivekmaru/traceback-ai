@@ -59,6 +59,7 @@ export async function runRulesDraft(
   const reviewDir = path.join(paths.reviews, options.runId);
   const decisionsPath = path.join(reviewDir, "decisions.json");
   const decisionsFile = await readJson<ReviewDecisionsFile>(decisionsPath);
+  assertUniqueDecisionIds(decisionsFile.decisions);
   const generatedAt = (options.now ?? new Date()).toISOString();
   const rules = decisionsFile.decisions
     .filter((decision) => ACCEPTED_DECISIONS.has(decision.decision))
@@ -109,6 +110,16 @@ function toDraftRule(decision: ReviewDecision): DraftRule {
       ...decision.notes,
     ],
   };
+}
+
+function assertUniqueDecisionIds(decisions: ReviewDecision[]): void {
+  const seen = new Set<string>();
+  for (const decision of decisions) {
+    if (seen.has(decision.id)) {
+      throw new Error(`Duplicate review decision ID in decisions.json: ${decision.id}`);
+    }
+    seen.add(decision.id);
+  }
 }
 
 function generateDraftRulesMarkdown(draftFile: DraftRulesFile): string {

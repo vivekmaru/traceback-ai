@@ -285,6 +285,61 @@ describe("runReview", () => {
     }
   });
 
+  test("conservative policy keeps cluster decision IDs unique when suffixes resemble real IDs", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "failure-pr-91-review_comment-3241022371",
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        enrichedRecord({
+          id: "failure-pr-92-review_comment-3241022372",
+          sourceCandidateIds: ["failure-pr-92-review_comment-3241022372"],
+          sourcePrs: [92],
+        }),
+        enrichedRecord({
+          id: "failure-pr-93-review_comment-3241022373",
+          sourceCandidateIds: ["failure-pr-93-review_comment-3241022373"],
+          sourcePrs: [93],
+        }),
+      ],
+      clusters: [
+        cluster({
+          id: "dup",
+          candidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        cluster({
+          id: "dup",
+          candidateIds: ["failure-pr-92-review_comment-3241022372"],
+          sourcePrs: [92],
+        }),
+        cluster({
+          id: "dup-1",
+          candidateIds: ["failure-pr-93-review_comment-3241022373"],
+          sourcePrs: [93],
+        }),
+      ],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const clusterDecisionIds = decisions.decisions
+        .filter((decision: any) => decision.itemType === "cluster")
+        .map((decision: any) => decision.id);
+
+      expect(new Set(clusterDecisionIds).size).toBe(clusterDecisionIds.length);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("conservative policy preserves colliding enriched record IDs with disambiguated decisions", async () => {
     const repoRoot = await repoWithAnalysisRun({
       runId: "2026-05-18T11-35-13Z",
@@ -333,6 +388,75 @@ describe("runReview", () => {
         decision: "needs_review",
         reason: expect.stringContaining("Duplicate enriched record ID"),
       });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("conservative policy keeps singleton decision IDs unique when suffixes resemble real record IDs", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({
+          id: "dup",
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        enrichedRecord({
+          id: "dup",
+          sourceCandidateIds: ["failure-pr-92-review_comment-3241022372"],
+          sourcePrs: [92],
+        }),
+        enrichedRecord({
+          id: "dup-1",
+          sourceCandidateIds: ["failure-pr-93-review_comment-3241022373"],
+          sourcePrs: [93],
+        }),
+      ],
+      clusters: [],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const singletonDecisionIds = decisions.decisions
+        .filter((decision: any) => decision.itemType === "singleton")
+        .map((decision: any) => decision.id);
+
+      expect(new Set(singletonDecisionIds).size).toBe(singletonDecisionIds.length);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("conservative policy keeps sourceless record decision IDs unique when suffixes resemble real IDs", async () => {
+    const repoRoot = await repoWithAnalysisRun({
+      runId: "2026-05-18T11-35-13Z",
+      enrichedRecords: [
+        enrichedRecord({ id: "dup", sourceCandidateIds: [], sourcePrs: [91] }),
+        enrichedRecord({ id: "dup", sourceCandidateIds: [], sourcePrs: [92] }),
+        enrichedRecord({ id: "dup-1", sourceCandidateIds: [], sourcePrs: [93] }),
+      ],
+      clusters: [],
+    });
+
+    try {
+      const result = await runReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        now: new Date("2026-05-18T12:00:00Z"),
+      });
+
+      const decisions = await readJson(path.join(result.reviewDir, "decisions.json"));
+      const sourcelessDecisionIds = decisions.decisions
+        .filter((decision: any) => decision.itemType === "enriched_record")
+        .map((decision: any) => decision.id);
+
+      expect(new Set(sourcelessDecisionIds).size).toBe(sourcelessDecisionIds.length);
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

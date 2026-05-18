@@ -144,6 +144,34 @@ describe("runRulesDraft", () => {
     }
   });
 
+  test("rejects duplicate decision IDs before generating draft rules", async () => {
+    const repoRoot = await repoWithReviewDecisions({
+      runId: "2026-05-18T11-35-13Z",
+      decisions: [
+        decision({
+          id: "dup",
+          decision: "accepted",
+        }),
+        decision({
+          id: "dup",
+          decision: "accepted",
+          title: "Duplicate accepted decision",
+        }),
+      ],
+    });
+
+    try {
+      await expect(
+        runRulesDraft(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          now: new Date("2026-05-18T13:00:00Z"),
+        }),
+      ).rejects.toThrow("Duplicate review decision ID");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("rejects run IDs that would escape the rules directory", async () => {
     const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-rules-"));
 

@@ -234,7 +234,7 @@ function buildConservativeDecisions({
     );
   });
 
-  return decisions;
+  return withUniqueDecisionIds(decisions);
 }
 
 function decisionFromCluster({
@@ -666,6 +666,30 @@ function findDuplicateValues(values: string[]): Set<string> {
 
 function enrichedRecordKey(record: EnrichedFailureRecord, index: number): string {
   return `${record.id}:${index}`;
+}
+
+function withUniqueDecisionIds(decisions: ReviewDecision[]): ReviewDecision[] {
+  const usedIds = new Set<string>();
+  return decisions.map((decision) => ({
+    ...decision,
+    id: allocateUniqueId(decision.id, usedIds),
+  }));
+}
+
+function allocateUniqueId(baseId: string, usedIds: Set<string>): string {
+  if (!usedIds.has(baseId)) {
+    usedIds.add(baseId);
+    return baseId;
+  }
+
+  let index = 2;
+  let candidate = `${baseId}__dedupe_${index}`;
+  while (usedIds.has(candidate)) {
+    index += 1;
+    candidate = `${baseId}__dedupe_${index}`;
+  }
+  usedIds.add(candidate);
+  return candidate;
 }
 
 function countBy<T>(items: T[], getKey: (item: T) => string): Map<string, number> {
