@@ -32,6 +32,7 @@ bun run traceback analyze --dry-run
 bun run traceback analyze --provider openai
 bun run traceback review --run <runId> --policy conservative
 bun run traceback rules --run <runId>
+bun run traceback rules export --run <runId> --target agents-md
 ```
 
 After building, the bundled CLI is available at `dist/cli.js`:
@@ -46,6 +47,7 @@ bun run build
 ./dist/cli.js analyze --provider openai
 ./dist/cli.js review --run <runId> --policy conservative
 ./dist/cli.js rules --run <runId>
+./dist/cli.js rules export --run <runId> --target agents-md
 ```
 
 ## Commands
@@ -61,6 +63,9 @@ Creates the local Traceback AI working directory:
 │   └── failures/
 ├── analysis/
 │   └── runs/
+├── reviews/
+├── rules/
+├── exports/
 └── reports/
 ```
 
@@ -294,8 +299,7 @@ The current conservative policy is intentionally cautious:
 - Missing or inconsistent source references become `needs_review`.
 - Ambiguous items default to `needs_review` or `needs_validation`, not accepted.
 
-Rules are not generated yet. Future rule generation should consume only reviewed
-and accepted decisions.
+Rule generation consumes only reviewed and accepted decisions.
 
 ### `traceback rules --run <runId>`
 
@@ -322,6 +326,46 @@ This command is still local-only and does not modify `AGENTS.md`, repository
 instruction files, source code, GitHub, or hosted services. The generated rules
 are reviewable drafts, not applied policy.
 
+### `traceback rules export --run <runId> --target agents-md`
+
+Reads existing draft rule outputs from:
+
+```text
+.traceback/rules/<runId>/
+├── draft-rules.json
+└── draft-rules.md
+```
+
+Then writes a controlled, human-reviewable export under:
+
+```text
+.traceback/exports/<runId>/
+├── AGENTS.proposed.md
+├── export-summary.md
+└── manifest.json
+```
+
+The only supported export target is currently `agents-md`.
+
+`AGENTS.proposed.md` is copy-pasteable proposed instruction text. It includes
+the source run ID, generated timestamp, local-only privacy note, accepted draft
+rules grouped by confidence, rationale, source PRs, source evidence, confidence,
+and review decision metadata where available.
+
+If no exportable draft rules exist, Traceback writes `export-summary.md` and
+`manifest.json` with a clear warning and does not create a misleading
+`AGENTS.proposed.md`.
+
+Safety boundaries:
+
+- The command does not call an LLM.
+- The command does not upload data.
+- The command does not modify root `AGENTS.md`.
+- The command does not modify root `CLAUDE.md`.
+- The command does not write `.cursorrules`.
+- The command does not modify source files, GitHub, or hosted services.
+- The command does not apply the proposed instructions automatically.
+
 ## Privacy Model
 
 Traceback AI is local-only:
@@ -337,8 +381,12 @@ Traceback AI is local-only:
   and writes review files under `.traceback/reviews/`.
 - `traceback rules` is local; it only reads review decisions and writes draft
   rule files under `.traceback/rules/`.
+- `traceback rules export --target agents-md` is local; it only reads draft rule
+  artifacts and optional review decisions, then writes proposed artifacts under
+  `.traceback/exports/`.
 - No hosted service, GitHub App, local web UI, or TUI is started.
-- Repo instruction files such as `AGENTS.md` are not generated or modified.
+- Root repo instruction files such as `AGENTS.md`, `CLAUDE.md`, and
+  `.cursorrules` are not modified.
 
 `.traceback/` is ignored by git because imported PR data can contain private
 code, comments, diffs, and review context.
@@ -358,8 +406,8 @@ bun run build
 - The importer fetches recent PRs by GitHub's updated ordering.
 - Candidate AI/agent markers are heuristics, not classification.
 - Failure candidates are deterministic signals, not final AI classification.
-- Traceback does not generate or apply repo instruction files from prevention
-  rules yet.
+- Traceback can generate proposed repo instruction artifacts, but it does not
+  apply them to root instruction files.
 - OpenAI analysis output is written locally for review; it is not treated as an
   automatic source of repo instructions.
 
@@ -367,5 +415,5 @@ bun run build
 
 - Convert AI-assisted analysis into reviewed failure records.
 - Improve accepted, rejected, contested, and resolved status detection from review threads.
-- Generate proposed repo-specific agent instructions for user review.
+- Add a controlled apply workflow after export quality and review boundaries are proven.
 - Add a tiny local review UI after the local file loop proves useful.

@@ -8,6 +8,7 @@ import { normalizePullRequestRecord } from "./normalize";
 import { generateFailureCandidatesReport, generateImportSummary } from "./report";
 import { runReview } from "./review";
 import { runRulesDraft } from "./rules";
+import { runRulesExport } from "./rules-export";
 import {
   initTraceback,
   readImportedRecords,
@@ -61,7 +62,9 @@ program
 program
   .command("rules")
   .description("Generate local draft rules from reviewed decisions.")
-  .requiredOption("--run <runId>", "reviewed run ID to convert into draft rules")
+  .argument("[action]", "optional rules action; use export to write proposed instructions")
+  .option("--run <runId>", "reviewed run ID to convert into draft rules")
+  .option("--target <target>", "export target; currently supports agents-md")
   .action(runRulesCommand);
 
 program.parseAsync().catch((error: unknown) => {
@@ -149,11 +152,46 @@ async function runReviewCommand(options: { run: string; policy: string }): Promi
   console.log(`Wrote review summary to ${result.summaryPath}`);
 }
 
-async function runRulesCommand(options: { run: string }): Promise<void> {
+async function runRulesCommand(
+  action: string | undefined,
+  options: { run?: string; target?: string },
+): Promise<void> {
+  if (action === "export") {
+    await runRulesExportCommand(options);
+    return;
+  }
+
+  if (action) {
+    throw new Error(`Unsupported rules action: ${action}. Supported actions: export.`);
+  }
+
+  if (!options.run) {
+    throw new Error("Specify --run <runId> or use `traceback rules export --run <runId> --target agents-md`.");
+  }
+
   const repoRoot = await findGitRoot();
   const result = await runRulesDraft(repoRoot, { runId: options.run });
   console.log(`Wrote draft rules to ${result.rulesPath}`);
   console.log(`Wrote draft rules summary to ${result.markdownPath}`);
+}
+
+async function runRulesExportCommand(options: { run?: string; target?: string }): Promise<void> {
+  if (!options.run) {
+    throw new Error("Specify --run <runId>.");
+  }
+  if (!options.target) {
+    throw new Error("Specify --target agents-md.");
+  }
+
+  const repoRoot = await findGitRoot();
+  const result = await runRulesExport(repoRoot, { runId: options.run, target: options.target });
+  if (result.proposedPath) {
+    console.log(`Wrote proposed ${options.target} export to ${result.proposedPath}`);
+  } else {
+    console.log("No exportable rules were found; AGENTS.proposed.md was not written.");
+  }
+  console.log(`Wrote export summary to ${result.summaryPath}`);
+  console.log(`Wrote export manifest to ${result.manifestPath}`);
 }
 
 async function detectRepository(repoRoot: string): Promise<GitHubRepository> {
