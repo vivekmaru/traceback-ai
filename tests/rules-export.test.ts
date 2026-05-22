@@ -3,38 +3,50 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { runRulesExport } from "../src/rules-export";
-import type { ReviewDecision, ReviewDecisionsFile } from "../src/review";
+import type { RuleDecision, RuleDecisionsFile } from "../src/rules-review";
 import type { DraftRule, DraftRulesFile } from "../src/rules";
 
 describe("runRulesExport", () => {
-  test("writes a human-reviewable AGENTS proposed file from draft rules", async () => {
+  test("uses rule decisions when present", async () => {
     const repoRoot = await repoWithDraftRules({
       runId: "2026-05-18T11-35-13Z",
       rules: [
         draftRule({
-          id: "draft-rule-review-cluster-template",
-          title: "Template intent and protected-URL state preservation",
-          rule: "Persist and restore full navigation intent including pathname, search, and hash.",
-          sourceDecisionIds: ["review-cluster-template"],
+          id: "draft-rule-accepted",
+          title: "Accepted title",
+          rule: "Accepted instruction.",
+          sourceDecisionIds: ["review-cluster-accepted"],
           sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
           sourcePrs: [91],
           confidence: "high",
         }),
-      ],
-      decisions: [
-        decision({
-          id: "review-cluster-template",
-          decision: "accepted",
-          sourceComments: ["https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022371"],
-          reason: "High-confidence cluster backed by review-comment candidates.",
-        }),
-        decision({
-          id: "review-cluster-randomness",
-          decision: "needs_validation",
-          title: "Insecure randomness used for identifiers",
-          preventionRule: "Validate identifier threat model before changing randomness.",
+        draftRule({
+          id: "draft-rule-needs-edit",
+          title: "Needs edit title",
+          rule: "Needs edit instruction.",
+          sourceDecisionIds: ["review-cluster-needs-edit"],
           sourceCandidateIds: ["failure-pr-83-pr_body-83"],
           sourcePrs: [83],
+          confidence: "low",
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-accepted",
+          decision: "accepted",
+          title: "Accepted title",
+          instruction: "Accepted instruction.",
+          sourcePrs: [91],
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+          confidence: "high",
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-needs-edit",
+          decision: "needs_edit",
+          title: "Needs edit title",
+          instruction: "Needs edit instruction.",
+          sourcePrs: [83],
+          sourceCandidateIds: ["failure-pr-83-pr_body-83"],
           confidence: "low",
         }),
       ],
@@ -44,56 +56,166 @@ describe("runRulesExport", () => {
       const result = await runRulesExport(repoRoot, {
         runId: "2026-05-18T11-35-13Z",
         target: "agents-md",
-        now: new Date("2026-05-18T14:00:00Z"),
+        now: new Date("2026-05-18T16:00:00Z"),
       });
 
-      const proposed = await readFile(
-        path.join(result.exportDir, "AGENTS.proposed.md"),
-        "utf8",
-      );
-      const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
+      const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
       const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
 
       expect(result.exportedRuleCount).toBe(1);
-      expect(proposed).toContain("# Traceback Proposed AGENTS.md Instructions");
-      expect(proposed).toContain("Run ID: 2026-05-18T11-35-13Z");
-      expect(proposed).toContain("Generated: 2026-05-18T14:00:00.000Z");
-      expect(proposed).toContain("proposed output and has not been applied");
-      expect(proposed).toContain("Local-only privacy note");
-      expect(proposed).toContain("Template intent and protected-URL state preservation");
-      expect(proposed).toContain(
-        "Persist and restore full navigation intent including pathname, search, and hash.",
-      );
-      expect(proposed).toContain("High-confidence cluster backed by review-comment candidates.");
-      expect(proposed).toContain("https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022371");
-      expect(proposed).toContain("Confidence: high");
+      expect(proposed).toContain("Accepted title");
+      expect(proposed).toContain("Accepted instruction.");
       expect(proposed).toContain("Review decision: accepted");
-      expect(proposed).not.toContain("needs_validation");
-      expect(proposed).not.toContain("Insecure randomness used for identifiers");
+      expect(proposed).not.toContain("Needs edit title");
+      expect(proposed).not.toContain("Needs edit instruction.");
+      expect(manifest.sourceRuleDecisionsPath).toEndWith(
+        ".traceback/rules/2026-05-18T11-35-13Z/rule-decisions.json",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 
-      expect(summary).toContain("- Run ID: 2026-05-18T11-35-13Z");
-      expect(summary).toContain("- Target: agents-md");
-      expect(summary).toContain("- Rules exported: 1");
-      expect(summary).toContain("AGENTS.proposed.md");
-      expect(summary).toContain("No root repo instruction files were modified.");
+  test("exports edited rule fields from rule decisions", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          id: "draft-rule-edited",
+          title: "Original title",
+          rule: "Original instruction.",
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-edited",
+          decision: "edited",
+          title: "Original title",
+          editedTitle: "Edited navigation intent rule",
+          instruction: "Original instruction.",
+          editedInstruction: "Always preserve pathname, search, and hash across auth redirects.",
+          rationale: "Original rationale.",
+          editedRationale: "Tightened after rule review.",
+        }),
+      ],
+    });
 
-      expect(manifest).toMatchObject({
+    try {
+      const result = await runRulesExport(repoRoot, {
         runId: "2026-05-18T11-35-13Z",
         target: "agents-md",
-        createdAt: "2026-05-18T14:00:00.000Z",
-        exportedRuleCount: 1,
+        now: new Date("2026-05-18T16:00:00Z"),
       });
-      expect(manifest.sourceDraftRulesPath).toEndWith(
-        ".traceback/rules/2026-05-18T11-35-13Z/draft-rules.json",
-      );
-      expect(manifest.sourceDecisionsPath).toEndWith(
-        ".traceback/reviews/2026-05-18T11-35-13Z/decisions.json",
-      );
-      expect(manifest.outputs).toEqual([
-        path.join(result.exportDir, "AGENTS.proposed.md"),
-        path.join(result.exportDir, "export-summary.md"),
-        path.join(result.exportDir, "manifest.json"),
-      ]);
+
+      const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
+      expect(proposed).toContain("Edited navigation intent rule");
+      expect(proposed).toContain("Always preserve pathname, search, and hash across auth redirects.");
+      expect(proposed).toContain("Tightened after rule review.");
+      expect(proposed).toContain("Review decision: edited");
+      expect(proposed).not.toContain("### Original title");
+      expect(proposed).not.toContain("Original instruction.");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("ignores edited fields on accepted rule decisions", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-accepted", title: "Draft title", rule: "Draft instruction." })],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-accepted",
+          decision: "accepted",
+          title: "Accepted title",
+          editedTitle: "Edited title should not export",
+          instruction: "Accepted instruction.",
+          editedInstruction: "Edited instruction should not export.",
+          rationale: "Accepted rationale.",
+          editedRationale: "Edited rationale should not export.",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
+      expect(proposed).toContain("Accepted title");
+      expect(proposed).toContain("Accepted instruction.");
+      expect(proposed).toContain("Accepted rationale.");
+      expect(proposed).not.toContain("Edited title should not export");
+      expect(proposed).not.toContain("Edited instruction should not export.");
+      expect(proposed).not.toContain("Edited rationale should not export.");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("excludes rejected and needs_edit rule decisions from export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({ id: "draft-rule-rejected", title: "Rejected title", rule: "Rejected instruction." }),
+        draftRule({ id: "draft-rule-needs-edit", title: "Needs edit title", rule: "Needs edit instruction." }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-rejected",
+          decision: "rejected",
+          title: "Rejected title",
+          instruction: "Rejected instruction.",
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-needs-edit",
+          decision: "needs_edit",
+          title: "Needs edit title",
+          instruction: "Needs edit instruction.",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
+      await expect(readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8")).rejects.toThrow();
+      expect(result.exportedRuleCount).toBe(0);
+      expect(summary).toContain("No exportable rules were found.");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("falls back to draft-rule export when no rule decisions exist", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-fallback", title: "Fallback title", rule: "Fallback instruction." })],
+      ruleDecisions: null,
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
+      const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
+      expect(result.exportedRuleCount).toBe(1);
+      expect(proposed).toContain("Fallback title");
+      expect(proposed).toContain("Fallback instruction.");
+      expect(proposed).toContain("Review decision: accepted draft rule");
+      expect(manifest.sourceRuleDecisionsPath).toBeUndefined();
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }
@@ -110,7 +232,7 @@ describe("runRulesExport", () => {
         runRulesExport(repoRoot, {
           runId: "2026-05-18T11-35-13Z",
           target: "agents-md",
-          now: new Date("2026-05-18T14:00:00Z"),
+          now: new Date("2026-05-18T16:00:00Z"),
         }),
       ).rejects.toThrow("Run `traceback rules --run 2026-05-18T11-35-13Z` first.");
     } finally {
@@ -126,7 +248,7 @@ describe("runRulesExport", () => {
         runRulesExport(repoRoot, {
           runId: "2026-05-18T11-35-13Z",
           target: "claude-md",
-          now: new Date("2026-05-18T14:00:00Z"),
+          now: new Date("2026-05-18T16:00:00Z"),
         }),
       ).rejects.toThrow("Unsupported export target: claude-md. Supported targets: agents-md.");
     } finally {
@@ -138,7 +260,7 @@ describe("runRulesExport", () => {
     const repoRoot = await repoWithDraftRules({
       runId: "2026-05-18T11-35-13Z",
       rules: [draftRule({})],
-      decisions: [decision({})],
+      ruleDecisions: [ruleDecision({})],
     });
     const rootAgentsPath = path.join(repoRoot, "AGENTS.md");
     await writeFile(rootAgentsPath, "# Existing Repo Instructions\n\nDo not overwrite me.\n", "utf8");
@@ -147,7 +269,7 @@ describe("runRulesExport", () => {
       await runRulesExport(repoRoot, {
         runId: "2026-05-18T11-35-13Z",
         target: "agents-md",
-        now: new Date("2026-05-18T14:00:00Z"),
+        now: new Date("2026-05-18T16:00:00Z"),
       });
 
       await expect(readFile(rootAgentsPath, "utf8")).resolves.toBe(
@@ -162,19 +284,14 @@ describe("runRulesExport", () => {
     const repoRoot = await repoWithDraftRules({
       runId: "2026-05-18T11-35-13Z",
       rules: [],
-      decisions: [
-        decision({
-          id: "review-cluster-randomness",
-          decision: "needs_validation",
-        }),
-      ],
+      ruleDecisions: [],
     });
 
     try {
       const result = await runRulesExport(repoRoot, {
         runId: "2026-05-18T11-35-13Z",
         target: "agents-md",
-        now: new Date("2026-05-18T14:00:00Z"),
+        now: new Date("2026-05-18T16:00:00Z"),
       });
 
       const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
@@ -192,63 +309,181 @@ describe("runRulesExport", () => {
       await rm(repoRoot, { recursive: true, force: true });
     }
   });
+
+  test("rejects duplicate rule decisions before export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-template" })],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-template",
+          decision: "accepted",
+          instruction: "First instruction.",
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-template",
+          decision: "edited",
+          editedInstruction: "Second instruction.",
+        }),
+      ],
+    });
+
+    try {
+      await expect(
+        runRulesExport(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          target: "agents-md",
+          now: new Date("2026-05-18T16:00:00Z"),
+        }),
+      ).rejects.toThrow("Duplicate rule decision for rule ID: draft-rule-template");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects rule decisions from a different run before export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-template" })],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-template",
+          decision: "accepted",
+        }),
+      ],
+      ruleDecisionsRunId: "2026-05-19T00-00-00Z",
+    });
+
+    try {
+      await expect(
+        runRulesExport(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          target: "agents-md",
+          now: new Date("2026-05-18T16:00:00Z"),
+        }),
+      ).rejects.toThrow(
+        "Rule decisions run ID 2026-05-19T00-00-00Z does not match export run ID 2026-05-18T11-35-13Z.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("excludes accepted rule decisions with empty instructions or missing sources", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          id: "draft-rule-empty-instruction",
+          title: "Empty instruction",
+          rule: "Draft fallback instruction must not leak.",
+        }),
+        draftRule({
+          id: "draft-rule-missing-sources",
+          title: "Missing sources",
+          rule: "Missing source instruction must not leak.",
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-empty-instruction",
+          decision: "accepted",
+          title: "Empty instruction",
+          instruction: "   ",
+          sourcePrs: [91],
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-missing-sources",
+          decision: "edited",
+          title: "Missing sources",
+          instruction: "Original instruction.",
+          editedInstruction: "Edited instruction without traceable sources.",
+          sourcePrs: [],
+          sourceCandidateIds: [],
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
+      const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
+
+      expect(result.exportedRuleCount).toBe(0);
+      await expect(readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8")).rejects.toThrow();
+      expect(summary).toContain(
+        "Rule decision draft-rule-empty-instruction is accepted but has an empty instruction; excluded from export.",
+      );
+      expect(summary).toContain(
+        "Rule decision draft-rule-missing-sources is edited but is missing source references; excluded from export.",
+      );
+      expect(manifest.warnings).toContain(
+        "Rule decision draft-rule-empty-instruction is accepted but has an empty instruction; excluded from export.",
+      );
+      expect(manifest.warnings).toContain(
+        "Rule decision draft-rule-missing-sources is edited but is missing source references; excluded from export.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 async function repoWithDraftRules({
   runId,
   rules,
-  decisions,
+  ruleDecisions,
+  ruleDecisionsRunId,
 }: {
   runId: string;
   rules: DraftRule[];
-  decisions: ReviewDecision[];
+  ruleDecisions: RuleDecision[] | null;
+  ruleDecisionsRunId?: string;
 }): Promise<string> {
   const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-rules-export-"));
   const rulesDir = path.join(repoRoot, ".traceback", "rules", runId);
-  const reviewDir = path.join(repoRoot, ".traceback", "reviews", runId);
   await mkdir(rulesDir, { recursive: true });
-  await mkdir(reviewDir, { recursive: true });
-
   const draftFile: DraftRulesFile = {
     schemaVersion: 1,
     runId,
     generatedAt: "2026-05-18T13:00:00.000Z",
     source: {
-      decisions: path.relative(rulesDir, path.join(reviewDir, "decisions.json")),
+      decisions: "../../reviews/2026-05-18T11-35-13Z/decisions.json",
     },
     rules,
-    excludedDecisions: [
-      {
-        id: "review-cluster-randomness",
-        decision: "needs_validation",
-        reason: "Decision is not accepted for draft rule generation.",
-      },
-    ],
+    excludedDecisions: [],
   };
-  const decisionsFile: ReviewDecisionsFile = {
-    schemaVersion: 1,
-    runId,
-    policy: "conservative",
-    reviewedAt: "2026-05-18T12:00:00.000Z",
-    source: {
-      manifest: "../../analysis/runs/2026-05-18T11-35-13Z/manifest.json",
-      enrichedRecords: "../../analysis/runs/2026-05-18T11-35-13Z/enriched-records.json",
-      clusters: "../../analysis/runs/2026-05-18T11-35-13Z/clusters.json",
-    },
-    decisions,
-  };
-
   await writeFile(
     path.join(rulesDir, "draft-rules.json"),
     `${JSON.stringify(draftFile, null, 2)}\n`,
     "utf8",
   );
   await writeFile(path.join(rulesDir, "draft-rules.md"), "# Traceback Draft Rules\n", "utf8");
-  await writeFile(
-    path.join(reviewDir, "decisions.json"),
-    `${JSON.stringify(decisionsFile, null, 2)}\n`,
-    "utf8",
-  );
+
+  if (ruleDecisions) {
+    const ruleDecisionsFile: RuleDecisionsFile = {
+      schemaVersion: 1,
+      runId: ruleDecisionsRunId ?? runId,
+      policy: "conservative",
+      reviewedAt: "2026-05-18T15:00:00.000Z",
+      source: {
+        draftRules: "draft-rules.json",
+        draftRulesMarkdown: "draft-rules.md",
+      },
+      decisions: ruleDecisions,
+    };
+    await writeFile(
+      path.join(rulesDir, "rule-decisions.json"),
+      `${JSON.stringify(ruleDecisionsFile, null, 2)}\n`,
+      "utf8",
+    );
+  }
 
   return repoRoot;
 }
@@ -271,25 +506,23 @@ function draftRule(overrides: Partial<DraftRule>): DraftRule {
   };
 }
 
-function decision(overrides: Partial<ReviewDecision>): ReviewDecision {
+function ruleDecision(overrides: Partial<RuleDecision>): RuleDecision {
   return {
-    id: "review-cluster-template",
+    ruleId: "draft-rule-review-cluster-template",
     runId: "2026-05-18T11-35-13Z",
-    itemType: "cluster",
-    sourceClusterId: "cluster-template",
-    sourceEnrichedRecordId: null,
-    sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
-    sourcePrs: [91],
-    sourceComments: ["https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r3241022371"],
-    title: "Template intent and protected-URL state preservation",
-    preventionRule: "Persist and restore full navigation intent.",
-    confidence: "high",
     decision: "accepted",
-    reason: "High-confidence cluster backed by review-comment candidates.",
+    title: "Template intent and protected-URL state preservation",
     editedTitle: null,
-    editedPreventionRule: null,
+    instruction: "Persist and restore full navigation intent.",
+    editedInstruction: null,
+    rationale: "Generated from accepted review decision.",
+    editedRationale: null,
+    sourcePrs: [91],
+    sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+    confidence: "high",
+    reason: "High-confidence cluster draft with preserved source references.",
     notes: [],
-    reviewedAt: "2026-05-18T12:00:00.000Z",
+    reviewedAt: "2026-05-18T15:00:00.000Z",
     ...overrides,
   };
 }

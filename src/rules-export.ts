@@ -4,6 +4,7 @@ import { assertSafeRunId } from "./run-id";
 import { getTracebackPaths } from "./storage";
 import type { ReviewDecision, ReviewDecisionsFile } from "./review";
 import type { DraftRule, DraftRulesFile } from "./rules";
+import type { RuleDecision, RuleDecisionsFile } from "./rules-review";
 
 export type RulesExportTarget = "agents-md";
 
@@ -30,17 +31,32 @@ type RulesExportManifest = {
   sourceDraftRulesPath: string;
   sourceDraftRulesMarkdownPath: string;
   sourceDecisionsPath?: string;
+  sourceRuleDecisionsPath?: string;
   outputs: string[];
   exportedRuleCount: number;
   warnings: string[];
 };
 
+type ExportableRule = {
+  id: string;
+  title: string;
+  instruction: string;
+  rationale: string;
+  sourcePrs: number[];
+  sourceCandidateIds: string[];
+  confidence: DraftRule["confidence"];
+  reviewDecision: string;
+  sourceDecisionIds: string[];
+  notes: string[];
+};
+
 const SUPPORTED_TARGETS: RulesExportTarget[] = ["agents-md"];
-const EXPORTABLE_DECISIONS = new Set<ReviewDecision["decision"]>([
+const EXPORTABLE_REVIEW_DECISIONS = new Set<ReviewDecision["decision"]>([
   "accepted",
   "accepted_singleton",
   "edited",
 ]);
+const EXPORTABLE_RULE_DECISIONS = new Set<RuleDecision["decision"]>(["accepted", "edited"]);
 
 export async function runRulesExport(
   repoRoot: string,
@@ -55,6 +71,7 @@ export async function runRulesExport(
   const draftRulesPath = path.join(rulesDir, "draft-rules.json");
   const draftRulesMarkdownPath = path.join(rulesDir, "draft-rules.md");
   const decisionsPath = path.join(paths.reviews, options.runId, "decisions.json");
+  const ruleDecisionsPath = path.join(rulesDir, "rule-decisions.json");
 
   await assertDraftRulesExist({
     runId: options.runId,
@@ -70,6 +87,13 @@ export async function runRulesExport(
   const draftRules = await readJson<DraftRulesFile>(draftRulesPath);
   await readFile(draftRulesMarkdownPath, "utf8");
   const { decisionsById, sourceDecisionsPath, warnings } = await readDecisionsById(decisionsPath);
+  const ruleDecisionRead = await readRuleDecisionsByRuleId(ruleDecisionsPath);
+  const exportableRules = buildExportableRules({
+    draftRules: draftRules.rules,
+    decisionsById,
+    ruleDecisionsByRuleId: ruleDecisionRead.ruleDecisionsByRuleId,
+    warnings,
+  });
 
   const createdAt = (options.now ?? new Date()).toISOString();
   const exportDir = path.join(paths.exports, options.runId);
@@ -79,16 +103,15 @@ export async function runRulesExport(
   const summaryPath = path.join(exportDir, "export-summary.md");
   const manifestPath = path.join(exportDir, "manifest.json");
   const outputs =
-    draftRules.rules.length > 0 ? [proposedPath, summaryPath, manifestPath] : [summaryPath, manifestPath];
+    exportableRules.length > 0 ? [proposedPath, summaryPath, manifestPath] : [summaryPath, manifestPath];
 
-  if (draftRules.rules.length > 0) {
+  if (exportableRules.length > 0) {
     await writeFile(
       proposedPath,
       renderAgentsProposed({
         runId: options.runId,
         createdAt,
-        rules: draftRules.rules,
-        decisionsById,
+        rules: exportableRules,
       }),
       "utf8",
     );
@@ -105,8 +128,11 @@ export async function runRulesExport(
     sourceDraftRulesPath: draftRulesPath,
     sourceDraftRulesMarkdownPath: draftRulesMarkdownPath,
     ...(sourceDecisionsPath ? { sourceDecisionsPath } : {}),
+    ...(ruleDecisionRead.sourceRuleDecisionsPath
+      ? { sourceRuleDecisionsPath: ruleDecisionRead.sourceRuleDecisionsPath }
+      : {}),
     outputs,
-    exportedRuleCount: draftRules.rules.length,
+    exportedRuleCount: exportableRules.length,
     warnings,
   };
 
@@ -115,8 +141,8 @@ export async function runRulesExport(
     renderExportSummary({
       runId: options.runId,
       target,
-      exportedRuleCount: draftRules.rules.length,
-      proposedPath: draftRules.rules.length > 0 ? proposedPath : null,
+      exportedRuleCount: exportableRules.length,
+      proposedPath: exportableRules.length > 0 ? proposedPath : null,
       warnings,
     }),
     "utf8",
@@ -125,12 +151,110 @@ export async function runRulesExport(
 
   return {
     exportDir,
-    proposedPath: draftRules.rules.length > 0 ? proposedPath : null,
+    proposedPath: exportableRules.length > 0 ? proposedPath : null,
     summaryPath,
     manifestPath,
     outputs,
-    exportedRuleCount: draftRules.rules.length,
+    exportedRuleCount: exportableRules.length,
   };
+}
+
+function buildExportableRules({
+  draftRules,
+  decisionsById,
+  ruleDecisionsByRuleId,
+  warnings,
+}: {
+  draftRules: DraftRule[];
+  decisionsById: Map<string, ReviewDecision>;
+  ruleDecisionsByRuleId: Map<string, RuleDecision> | null;
+  warnings: string[];
+}): ExportableRule[] {
+  if (ruleDecisionsByRuleId) {
+    return draftRules.flatMap((rule) => {
+      const decision = ruleDecisionsByRuleId.get(rule.id);
+      if (!decision) {
+        warnings.push(`Rule decision missing for ${rule.id}; excluded from export.`);
+        return [];
+      }
+
+      if (!EXPORTABLE_RULE_DECISIONS.has(decision.decision)) {
+        return [];
+      }
+
+      const title = decision.decision === "edited" ? decision.editedTitle ?? decision.title : decision.title;
+      const instruction =
+        decision.decision === "edited" ? decision.editedInstruction ?? decision.instruction : decision.instruction;
+      const rationale =
+        decision.decision === "edited" ? decision.editedRationale ?? decision.rationale : decision.rationale;
+      if (instruction.trim().length === 0) {
+        warnings.push(
+          `Rule decision ${decision.ruleId} is ${decision.decision} but has an empty instruction; excluded from export.`,
+        );
+        return [];
+      }
+
+      if (decision.sourcePrs.length === 0 || decision.sourceCandidateIds.length === 0) {
+        warnings.push(
+          `Rule decision ${decision.ruleId} is ${decision.decision} but is missing source references; excluded from export.`,
+        );
+        return [];
+      }
+
+      return [
+        {
+          id: rule.id,
+          title,
+          instruction,
+          rationale,
+          sourcePrs: decision.sourcePrs,
+          sourceCandidateIds: decision.sourceCandidateIds,
+          confidence: decision.confidence,
+          reviewDecision: decision.decision,
+          sourceDecisionIds: rule.sourceDecisionIds,
+          notes: decision.notes,
+        },
+      ];
+    });
+  }
+
+  if (decisionsById.size === 0) {
+    warnings.push("Review decisions were not found; export used draft rule metadata only.");
+  }
+
+  return draftRules.map((rule) => {
+    const sourceDecisions = sourceReviewDecisions(rule, decisionsById);
+    const reviewDecisions = unique(sourceDecisions.map((decision) => decision.decision));
+    const rationales = unique(sourceDecisions.map((decision) => decision.reason).filter(Boolean));
+    const sourceComments = unique(sourceDecisions.flatMap((decision) => decision.sourceComments));
+
+    return {
+      id: rule.id,
+      title: rule.title,
+      instruction: rule.rule,
+      rationale:
+        rationales.join(" ") ||
+        rule.notes.join(" ") ||
+        "Derived from accepted Traceback draft rule evidence.",
+      sourcePrs: rule.sourcePrs,
+      sourceCandidateIds: [...sourceComments, ...rule.sourceCandidateIds],
+      confidence: rule.confidence,
+      reviewDecision: reviewDecisions.join(", ") || "accepted draft rule",
+      sourceDecisionIds: rule.sourceDecisionIds,
+      notes: rule.notes,
+    };
+  });
+}
+
+function sourceReviewDecisions(
+  rule: DraftRule,
+  decisionsById: Map<string, ReviewDecision>,
+): ReviewDecision[] {
+  return rule.sourceDecisionIds
+    .map((decisionId) => decisionsById.get(decisionId))
+    .filter((decision): decision is ReviewDecision =>
+      Boolean(decision && EXPORTABLE_REVIEW_DECISIONS.has(decision.decision)),
+    );
 }
 
 function assertSupportedTarget(target: string): void {
@@ -175,7 +299,7 @@ async function readDecisionsById(
   if (!(await pathExists(decisionsPath))) {
     return {
       decisionsById: new Map(),
-      warnings: ["Review decisions were not found; export used draft rule metadata only."],
+      warnings: [],
     };
   }
 
@@ -187,21 +311,51 @@ async function readDecisionsById(
   };
 }
 
+async function readRuleDecisionsByRuleId(
+  ruleDecisionsPath: string,
+): Promise<{ ruleDecisionsByRuleId: Map<string, RuleDecision> | null; sourceRuleDecisionsPath?: string }> {
+  if (!(await pathExists(ruleDecisionsPath))) {
+    return { ruleDecisionsByRuleId: null };
+  }
+
+  const decisionsFile = await readJson<RuleDecisionsFile>(ruleDecisionsPath);
+  const runId = path.basename(path.dirname(ruleDecisionsPath));
+  if (decisionsFile.runId !== runId) {
+    throw new Error(
+      `Rule decisions run ID ${decisionsFile.runId} does not match export run ID ${runId}.`,
+    );
+  }
+
+  assertUniqueRuleDecisionIds(decisionsFile.decisions);
+  return {
+    ruleDecisionsByRuleId: new Map(decisionsFile.decisions.map((decision) => [decision.ruleId, decision])),
+    sourceRuleDecisionsPath: ruleDecisionsPath,
+  };
+}
+
+function assertUniqueRuleDecisionIds(decisions: RuleDecision[]): void {
+  const seen = new Set<string>();
+  for (const decision of decisions) {
+    if (seen.has(decision.ruleId)) {
+      throw new Error(`Duplicate rule decision for rule ID: ${decision.ruleId}`);
+    }
+    seen.add(decision.ruleId);
+  }
+}
+
 function renderAgentsProposed({
   runId,
   createdAt,
   rules,
-  decisionsById,
 }: {
   runId: string;
   createdAt: string;
-  rules: DraftRule[];
-  decisionsById: Map<string, ReviewDecision>;
+  rules: ExportableRule[];
 }): string {
   return [
     "# Traceback Proposed AGENTS.md Instructions",
     "",
-    "Generated by Traceback from accepted draft rules.",
+    "Generated by Traceback from accepted rule decisions.",
     "",
     `- Run ID: ${runId}`,
     `- Generated: ${createdAt}`,
@@ -210,47 +364,33 @@ function renderAgentsProposed({
     "",
     "## High Confidence Rules",
     "",
-    ...renderRuleSection(rules.filter((rule) => rule.confidence === "high"), decisionsById),
+    ...renderRuleSection(rules.filter((rule) => rule.confidence === "high")),
     "",
     "## Other Rules",
     "",
-    ...renderRuleSection(rules.filter((rule) => rule.confidence !== "high"), decisionsById),
+    ...renderRuleSection(rules.filter((rule) => rule.confidence !== "high")),
     "",
   ].join("\n");
 }
 
-function renderRuleSection(
-  rules: DraftRule[],
-  decisionsById: Map<string, ReviewDecision>,
-): string[] {
+function renderRuleSection(rules: ExportableRule[]): string[] {
   if (rules.length === 0) {
     return ["None."];
   }
 
-  return rules.flatMap((rule) => renderRule(rule, decisionsById));
+  return rules.flatMap(renderRule);
 }
 
-function renderRule(rule: DraftRule, decisionsById: Map<string, ReviewDecision>): string[] {
-  const sourceDecisions = rule.sourceDecisionIds
-    .map((decisionId) => decisionsById.get(decisionId))
-    .filter((decision): decision is ReviewDecision =>
-      Boolean(decision && EXPORTABLE_DECISIONS.has(decision.decision)),
-    );
-  const reviewDecisions = unique(
-    sourceDecisions.map((decision) => decision.decision),
-  );
-  const rationales = unique(sourceDecisions.map((decision) => decision.reason).filter(Boolean));
-  const sourceComments = unique(sourceDecisions.flatMap((decision) => decision.sourceComments));
-
+function renderRule(rule: ExportableRule): string[] {
   return [
     `### ${rule.title}`,
     "",
-    `- Instruction: ${rule.rule}`,
-    `- Rationale: ${rationales.join(" ") || rule.notes.join(" ") || "Derived from accepted Traceback draft rule evidence."}`,
+    `- Instruction: ${rule.instruction}`,
+    `- Rationale: ${rule.rationale || rule.notes.join(" ") || "Derived from accepted Traceback draft rule evidence."}`,
     `- Source PRs: ${rule.sourcePrs.map((pr) => `#${pr}`).join(", ") || "none"}`,
-    `- Source evidence: ${formatList([...sourceComments, ...rule.sourceCandidateIds])}`,
+    `- Source evidence: ${formatList(rule.sourceCandidateIds)}`,
     `- Confidence: ${rule.confidence}`,
-    `- Review decision: ${reviewDecisions.join(", ") || "accepted draft rule"}`,
+    `- Review decision: ${rule.reviewDecision}`,
     "",
   ];
 }
