@@ -63,9 +63,12 @@ describe("runRulesExport", () => {
       const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
 
       expect(result.exportedRuleCount).toBe(1);
-      expect(proposed).toContain("Accepted title");
-      expect(proposed).toContain("Accepted instruction.");
-      expect(proposed).toContain("Review decision: accepted");
+      expect(proposed).toContain("## Traceback Learnings");
+      expect(proposed).toContain("When editing Traceback:");
+      expect(proposed).toContain("- Accepted instruction.");
+      expect(proposed).not.toContain("Review decision: accepted");
+      expect(proposed).not.toContain("Source evidence:");
+      expect(proposed).not.toContain("Confidence:");
       expect(proposed).not.toContain("Needs edit title");
       expect(proposed).not.toContain("Needs edit instruction.");
       expect(manifest.sourceRuleDecisionsPath).toEndWith(
@@ -108,10 +111,9 @@ describe("runRulesExport", () => {
       });
 
       const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
-      expect(proposed).toContain("Edited navigation intent rule");
       expect(proposed).toContain("Always preserve pathname, search, and hash across auth redirects.");
-      expect(proposed).toContain("Tightened after rule review.");
-      expect(proposed).toContain("Review decision: edited");
+      expect(proposed).not.toContain("Tightened after rule review.");
+      expect(proposed).not.toContain("Review decision: edited");
       expect(proposed).not.toContain("### Original title");
       expect(proposed).not.toContain("Original instruction.");
     } finally {
@@ -145,9 +147,7 @@ describe("runRulesExport", () => {
       });
 
       const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
-      expect(proposed).toContain("Accepted title");
       expect(proposed).toContain("Accepted instruction.");
-      expect(proposed).toContain("Accepted rationale.");
       expect(proposed).not.toContain("Edited title should not export");
       expect(proposed).not.toContain("Edited instruction should not export.");
       expect(proposed).not.toContain("Edited rationale should not export.");
@@ -212,9 +212,8 @@ describe("runRulesExport", () => {
       const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
       const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
       expect(result.exportedRuleCount).toBe(1);
-      expect(proposed).toContain("Fallback title");
       expect(proposed).toContain("Fallback instruction.");
-      expect(proposed).toContain("Review decision: accepted draft rule");
+      expect(proposed).not.toContain("Review decision: accepted draft rule");
       expect(manifest.sourceRuleDecisionsPath).toBeUndefined();
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
