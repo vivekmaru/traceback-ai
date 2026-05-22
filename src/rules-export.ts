@@ -182,11 +182,26 @@ function buildExportableRules({
         return [];
       }
 
+      const instruction = decision.editedInstruction ?? decision.instruction;
+      if (instruction.trim().length === 0) {
+        warnings.push(
+          `Rule decision ${decision.ruleId} is ${decision.decision} but has an empty instruction; excluded from export.`,
+        );
+        return [];
+      }
+
+      if (decision.sourcePrs.length === 0 || decision.sourceCandidateIds.length === 0) {
+        warnings.push(
+          `Rule decision ${decision.ruleId} is ${decision.decision} but is missing source references; excluded from export.`,
+        );
+        return [];
+      }
+
       return [
         {
           id: rule.id,
           title: decision.editedTitle ?? decision.title,
-          instruction: decision.editedInstruction ?? decision.instruction,
+          instruction,
           rationale: decision.editedRationale ?? decision.rationale,
           sourcePrs: decision.sourcePrs,
           sourceCandidateIds: decision.sourceCandidateIds,
@@ -300,10 +315,21 @@ async function readRuleDecisionsByRuleId(
   }
 
   const decisionsFile = await readJson<RuleDecisionsFile>(ruleDecisionsPath);
+  assertUniqueRuleDecisionIds(decisionsFile.decisions);
   return {
     ruleDecisionsByRuleId: new Map(decisionsFile.decisions.map((decision) => [decision.ruleId, decision])),
     sourceRuleDecisionsPath: ruleDecisionsPath,
   };
+}
+
+function assertUniqueRuleDecisionIds(decisions: RuleDecision[]): void {
+  const seen = new Set<string>();
+  for (const decision of decisions) {
+    if (seen.has(decision.ruleId)) {
+      throw new Error(`Duplicate rule decision for rule ID: ${decision.ruleId}`);
+    }
+    seen.add(decision.ruleId);
+  }
 }
 
 function renderAgentsProposed({

@@ -272,6 +272,102 @@ describe("runRulesExport", () => {
       await rm(repoRoot, { recursive: true, force: true });
     }
   });
+
+  test("rejects duplicate rule decisions before export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-template" })],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-template",
+          decision: "accepted",
+          instruction: "First instruction.",
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-template",
+          decision: "edited",
+          editedInstruction: "Second instruction.",
+        }),
+      ],
+    });
+
+    try {
+      await expect(
+        runRulesExport(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          target: "agents-md",
+          now: new Date("2026-05-18T16:00:00Z"),
+        }),
+      ).rejects.toThrow("Duplicate rule decision for rule ID: draft-rule-template");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("excludes accepted rule decisions with empty instructions or missing sources", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          id: "draft-rule-empty-instruction",
+          title: "Empty instruction",
+          rule: "Draft fallback instruction must not leak.",
+        }),
+        draftRule({
+          id: "draft-rule-missing-sources",
+          title: "Missing sources",
+          rule: "Missing source instruction must not leak.",
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-empty-instruction",
+          decision: "accepted",
+          title: "Empty instruction",
+          instruction: "   ",
+          sourcePrs: [91],
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-missing-sources",
+          decision: "edited",
+          title: "Missing sources",
+          instruction: "Original instruction.",
+          editedInstruction: "Edited instruction without traceable sources.",
+          sourcePrs: [],
+          sourceCandidateIds: [],
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
+      const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
+
+      expect(result.exportedRuleCount).toBe(0);
+      await expect(readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8")).rejects.toThrow();
+      expect(summary).toContain(
+        "Rule decision draft-rule-empty-instruction is accepted but has an empty instruction; excluded from export.",
+      );
+      expect(summary).toContain(
+        "Rule decision draft-rule-missing-sources is edited but is missing source references; excluded from export.",
+      );
+      expect(manifest.warnings).toContain(
+        "Rule decision draft-rule-empty-instruction is accepted but has an empty instruction; excluded from export.",
+      );
+      expect(manifest.warnings).toContain(
+        "Rule decision draft-rule-missing-sources is edited but is missing source references; excluded from export.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 async function repoWithDraftRules({
