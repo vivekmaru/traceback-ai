@@ -32,6 +32,7 @@ bun run traceback analyze --dry-run
 bun run traceback analyze --provider openai
 bun run traceback review --run <runId> --policy conservative
 bun run traceback rules --run <runId>
+bun run traceback rules review --run <runId> --policy conservative
 bun run traceback rules export --run <runId> --target agents-md
 ```
 
@@ -47,6 +48,7 @@ bun run build
 ./dist/cli.js analyze --provider openai
 ./dist/cli.js review --run <runId> --policy conservative
 ./dist/cli.js rules --run <runId>
+./dist/cli.js rules review --run <runId> --policy conservative
 ./dist/cli.js rules export --run <runId> --target agents-md
 ```
 
@@ -63,9 +65,6 @@ Creates the local Traceback AI working directory:
 │   └── failures/
 ├── analysis/
 │   └── runs/
-├── reviews/
-├── rules/
-├── exports/
 └── reports/
 ```
 
@@ -299,7 +298,8 @@ The current conservative policy is intentionally cautious:
 - Missing or inconsistent source references become `needs_review`.
 - Ambiguous items default to `needs_review` or `needs_validation`, not accepted.
 
-Rule generation consumes only reviewed and accepted decisions.
+Rules are not generated yet. Future rule generation should consume only reviewed
+and accepted decisions.
 
 ### `traceback rules --run <runId>`
 
@@ -326,6 +326,55 @@ This command is still local-only and does not modify `AGENTS.md`, repository
 instruction files, source code, GitHub, or hosted services. The generated rules
 are reviewable drafts, not applied policy.
 
+### `traceback rules review --run <runId> --policy conservative`
+
+Reads existing draft rule outputs from:
+
+```text
+.traceback/rules/<runId>/
+├── draft-rules.json
+└── draft-rules.md
+```
+
+Then writes a local rule-review layer:
+
+```text
+.traceback/rules/<runId>/
+├── rule-decisions.json
+└── rule-review.md
+```
+
+Rule review is deterministic and local-only. The conservative policy accepts
+high-confidence draft rules that appear to come from accepted clusters and keep
+source references intact. It marks low-confidence, singleton, ambiguous, or
+incomplete rules as `needs_edit` where detectable. It only rejects rules
+automatically when the instruction is empty or source references are missing.
+
+Each rule decision includes:
+
+- `ruleId`
+- `runId`
+- `decision` (`accepted`, `rejected`, `needs_edit`, or `edited`)
+- `title`
+- `editedTitle`
+- `instruction`
+- `editedInstruction`
+- `rationale`
+- `editedRationale`
+- `sourcePrs`
+- `sourceCandidateIds`
+- `confidence`
+- `reason`
+- `notes`
+- `reviewedAt`
+
+The decision file is intended to be human-editable. You can also normalize a
+manually edited decision file back into the run directory:
+
+```bash
+traceback rules review --run <runId> --policy conservative --from <path>
+```
+
 ### `traceback rules export --run <runId> --target agents-md`
 
 Reads existing draft rule outputs from:
@@ -334,6 +383,12 @@ Reads existing draft rule outputs from:
 .traceback/rules/<runId>/
 ├── draft-rules.json
 └── draft-rules.md
+```
+
+When present, export also reads:
+
+```text
+.traceback/rules/<runId>/rule-decisions.json
 ```
 
 Then writes a controlled, human-reviewable export under:
@@ -347,12 +402,18 @@ Then writes a controlled, human-reviewable export under:
 
 The only supported export target is currently `agents-md`.
 
-`AGENTS.proposed.md` is copy-pasteable proposed instruction text. It includes
-the source run ID, generated timestamp, local-only privacy note, accepted draft
-rules grouped by confidence, rationale, source PRs, source evidence, confidence,
-and review decision metadata where available.
+If rule decisions are present, export includes only decisions marked `accepted`
+or `edited`; `rejected` and `needs_edit` rules are excluded. For edited rules,
+`editedTitle`, `editedInstruction`, and `editedRationale` are used when present.
+If rule decisions do not exist, export falls back to the existing draft-rule
+behavior and exports accepted draft rules directly.
 
-If no exportable draft rules exist, Traceback writes `export-summary.md` and
+`AGENTS.proposed.md` is copy-pasteable proposed instruction text. It includes
+the source run ID, generated timestamp, local-only privacy note, exported rules
+grouped by confidence, rationale, source PRs, source evidence, confidence, and
+review decision metadata where available.
+
+If no exportable rules exist, Traceback writes `export-summary.md` and
 `manifest.json` with a clear warning and does not create a misleading
 `AGENTS.proposed.md`.
 
@@ -381,12 +442,12 @@ Traceback AI is local-only:
   and writes review files under `.traceback/reviews/`.
 - `traceback rules` is local; it only reads review decisions and writes draft
   rule files under `.traceback/rules/`.
-- `traceback rules export --target agents-md` is local; it only reads draft rule
-  artifacts and optional review decisions, then writes proposed artifacts under
-  `.traceback/exports/`.
+- `traceback rules review` is local; it only reads draft rules and writes
+  review decisions under `.traceback/rules/<runId>/`.
+- `traceback rules export` is local; it reads draft rules and optional rule
+  decisions, then writes proposed output under `.traceback/exports/<runId>/`.
 - No hosted service, GitHub App, local web UI, or TUI is started.
-- Root repo instruction files such as `AGENTS.md`, `CLAUDE.md`, and
-  `.cursorrules` are not modified.
+- Repo instruction files such as `AGENTS.md` are not generated or modified.
 
 `.traceback/` is ignored by git because imported PR data can contain private
 code, comments, diffs, and review context.
@@ -406,14 +467,17 @@ bun run build
 - The importer fetches recent PRs by GitHub's updated ordering.
 - Candidate AI/agent markers are heuristics, not classification.
 - Failure candidates are deterministic signals, not final AI classification.
-- Traceback can generate proposed repo instruction artifacts, but it does not
-  apply them to root instruction files.
+- Traceback generates proposed instruction artifacts, but does not apply them
+  to root repo instruction files.
 - OpenAI analysis output is written locally for review; it is not treated as an
   automatic source of repo instructions.
+- Rule review is file-based and non-interactive; it does not launch an editor or
+  UI.
 
 ## Next Steps
 
-- Convert AI-assisted analysis into reviewed failure records.
-- Improve accepted, rejected, contested, and resolved status detection from review threads.
-- Add a controlled apply workflow after export quality and review boundaries are proven.
+- Add a guarded apply workflow only after proposed artifacts prove useful in
+  manual review.
+- Improve accepted, rejected, contested, and resolved status detection from
+  review threads.
 - Add a tiny local review UI after the local file loop proves useful.

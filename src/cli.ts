@@ -9,6 +9,7 @@ import { generateFailureCandidatesReport, generateImportSummary } from "./report
 import { runReview } from "./review";
 import { runRulesDraft } from "./rules";
 import { runRulesExport } from "./rules-export";
+import { runRulesReview } from "./rules-review";
 import {
   initTraceback,
   readImportedRecords,
@@ -62,8 +63,10 @@ program
 program
   .command("rules")
   .description("Generate local draft rules from reviewed decisions.")
-  .argument("[action]", "optional rules action; use export to write proposed instructions")
+  .argument("[action]", "optional rules action; use review or export")
   .option("--run <runId>", "reviewed run ID to convert into draft rules")
+  .option("--policy <policy>", "rule review policy to apply; currently supports conservative")
+  .option("--from <path>", "read and normalize a manual rule-decisions-style file")
   .option("--target <target>", "export target; currently supports agents-md")
   .action(runRulesCommand);
 
@@ -154,25 +157,52 @@ async function runReviewCommand(options: { run: string; policy: string }): Promi
 
 async function runRulesCommand(
   action: string | undefined,
-  options: { run?: string; target?: string },
+  options: { run?: string; policy?: string; from?: string; target?: string },
 ): Promise<void> {
+  if (action === "review") {
+    await runRulesReviewCommand(options);
+    return;
+  }
+
   if (action === "export") {
     await runRulesExportCommand(options);
     return;
   }
 
   if (action) {
-    throw new Error(`Unsupported rules action: ${action}. Supported actions: export.`);
+    throw new Error(`Unsupported rules action: ${action}. Supported actions: review, export.`);
   }
 
   if (!options.run) {
-    throw new Error("Specify --run <runId> or use `traceback rules export --run <runId> --target agents-md`.");
+    throw new Error("Specify --run <runId>.");
   }
 
   const repoRoot = await findGitRoot();
   const result = await runRulesDraft(repoRoot, { runId: options.run });
   console.log(`Wrote draft rules to ${result.rulesPath}`);
   console.log(`Wrote draft rules summary to ${result.markdownPath}`);
+}
+
+async function runRulesReviewCommand(options: {
+  run?: string;
+  policy?: string;
+  from?: string;
+}): Promise<void> {
+  if (!options.run) {
+    throw new Error("Specify --run <runId>.");
+  }
+  if (options.policy !== "conservative") {
+    throw new Error("Only --policy conservative is supported.");
+  }
+
+  const repoRoot = await findGitRoot();
+  const result = await runRulesReview(repoRoot, {
+    runId: options.run,
+    policy: "conservative",
+    from: options.from,
+  });
+  console.log(`Wrote rule decisions to ${result.decisionsPath}`);
+  console.log(`Wrote rule review summary to ${result.markdownPath}`);
 }
 
 async function runRulesExportCommand(options: { run?: string; target?: string }): Promise<void> {
