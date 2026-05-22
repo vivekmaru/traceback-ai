@@ -304,6 +304,34 @@ describe("runRulesExport", () => {
     }
   });
 
+  test("rejects rule decisions from a different run before export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-template" })],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-template",
+          decision: "accepted",
+        }),
+      ],
+      ruleDecisionsRunId: "2026-05-19T00-00-00Z",
+    });
+
+    try {
+      await expect(
+        runRulesExport(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          target: "agents-md",
+          now: new Date("2026-05-18T16:00:00Z"),
+        }),
+      ).rejects.toThrow(
+        "Rule decisions run ID 2026-05-19T00-00-00Z does not match export run ID 2026-05-18T11-35-13Z.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("excludes accepted rule decisions with empty instructions or missing sources", async () => {
     const repoRoot = await repoWithDraftRules({
       runId: "2026-05-18T11-35-13Z",
@@ -374,10 +402,12 @@ async function repoWithDraftRules({
   runId,
   rules,
   ruleDecisions,
+  ruleDecisionsRunId,
 }: {
   runId: string;
   rules: DraftRule[];
   ruleDecisions: RuleDecision[] | null;
+  ruleDecisionsRunId?: string;
 }): Promise<string> {
   const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-rules-export-"));
   const rulesDir = path.join(repoRoot, ".traceback", "rules", runId);
@@ -402,7 +432,7 @@ async function repoWithDraftRules({
   if (ruleDecisions) {
     const ruleDecisionsFile: RuleDecisionsFile = {
       schemaVersion: 1,
-      runId,
+      runId: ruleDecisionsRunId ?? runId,
       policy: "conservative",
       reviewedAt: "2026-05-18T15:00:00.000Z",
       source: {

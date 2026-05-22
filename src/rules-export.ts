@@ -315,6 +315,13 @@ async function readRuleDecisionsByRuleId(
   }
 
   const decisionsFile = await readJson<RuleDecisionsFile>(ruleDecisionsPath);
+  const runId = path.basename(path.dirname(ruleDecisionsPath));
+  if (decisionsFile.runId !== runId) {
+    throw new Error(
+      `Rule decisions run ID ${decisionsFile.runId} does not match export run ID ${runId}.`,
+    );
+  }
+
   assertUniqueRuleDecisionIds(decisionsFile.decisions);
   return {
     ruleDecisionsByRuleId: new Map(decisionsFile.decisions.map((decision) => [decision.ruleId, decision])),

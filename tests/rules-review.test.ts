@@ -159,6 +159,90 @@ describe("runRulesReview", () => {
       await rm(repoRoot, { recursive: true, force: true });
     }
   });
+
+  test("rejects manual rule decisions from a different run", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({})],
+    });
+    const manualPath = path.join(repoRoot, "manual-rule-decisions.json");
+    await writeFile(
+      manualPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          runId: "2026-05-19T00-00-00Z",
+          policy: "conservative",
+          reviewedAt: "2026-05-18T15:00:00.000Z",
+          source: {
+            draftRules: "draft-rules.json",
+            draftRulesMarkdown: "draft-rules.md",
+          },
+          decisions: [
+            {
+              ruleId: "draft-rule-review-cluster-template",
+              decision: "accepted",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    try {
+      await expect(
+        runRulesReview(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          policy: "conservative",
+          from: manualPath,
+          now: new Date("2026-05-18T15:00:00Z"),
+        }),
+      ).rejects.toThrow(
+        "Manual rule decisions run ID 2026-05-19T00-00-00Z does not match requested run ID 2026-05-18T11-35-13Z.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects manual rule decisions for unknown rule IDs", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({})],
+    });
+    const manualPath = path.join(repoRoot, "manual-rule-decisions.json");
+    await writeFile(
+      manualPath,
+      `${JSON.stringify(
+        {
+          decisions: [
+            {
+              ruleId: "draft-rule-stale",
+              decision: "accepted",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    try {
+      await expect(
+        runRulesReview(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          policy: "conservative",
+          from: manualPath,
+          now: new Date("2026-05-18T15:00:00Z"),
+        }),
+      ).rejects.toThrow("Manual rule decision references unknown rule ID: draft-rule-stale");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 async function repoWithDraftRules({

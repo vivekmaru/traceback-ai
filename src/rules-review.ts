@@ -198,9 +198,19 @@ function normalizeManualDecisions({
   reviewedAt: string;
   rulesById: Map<string, DraftRule>;
 }): RuleDecision[] {
+  if (isRuleDecisionsFile(input) && input.runId !== runId) {
+    throw new Error(
+      `Manual rule decisions run ID ${input.runId} does not match requested run ID ${runId}.`,
+    );
+  }
+
   const manualDecisions = Array.isArray(input) ? input : input.decisions;
   return manualDecisions.map((manualDecision) => {
     const draftRule = rulesById.get(manualDecision.ruleId);
+    if (!draftRule) {
+      throw new Error(`Manual rule decision references unknown rule ID: ${manualDecision.ruleId}`);
+    }
+
     return {
       ruleId: manualDecision.ruleId,
       runId,
@@ -222,6 +232,10 @@ function normalizeManualDecisions({
       reviewedAt,
     };
   });
+}
+
+function isRuleDecisionsFile(input: ManualRuleDecisionsInput): input is RuleDecisionsFile {
+  return !Array.isArray(input) && "runId" in input && typeof input.runId === "string";
 }
 
 function normalizeDecisionValue(value: RuleDecisionValue | undefined): RuleDecisionValue {
