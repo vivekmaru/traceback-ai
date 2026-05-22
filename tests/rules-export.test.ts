@@ -119,6 +119,43 @@ describe("runRulesExport", () => {
     }
   });
 
+  test("ignores edited fields on accepted rule decisions", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({ id: "draft-rule-accepted", title: "Draft title", rule: "Draft instruction." })],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-accepted",
+          decision: "accepted",
+          title: "Accepted title",
+          editedTitle: "Edited title should not export",
+          instruction: "Accepted instruction.",
+          editedInstruction: "Edited instruction should not export.",
+          rationale: "Accepted rationale.",
+          editedRationale: "Edited rationale should not export.",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
+      expect(proposed).toContain("Accepted title");
+      expect(proposed).toContain("Accepted instruction.");
+      expect(proposed).toContain("Accepted rationale.");
+      expect(proposed).not.toContain("Edited title should not export");
+      expect(proposed).not.toContain("Edited instruction should not export.");
+      expect(proposed).not.toContain("Edited rationale should not export.");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("excludes rejected and needs_edit rule decisions from export", async () => {
     const repoRoot = await repoWithDraftRules({
       runId: "2026-05-18T11-35-13Z",

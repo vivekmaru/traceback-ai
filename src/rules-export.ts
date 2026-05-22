@@ -182,7 +182,11 @@ function buildExportableRules({
         return [];
       }
 
-      const instruction = decision.editedInstruction ?? decision.instruction;
+      const title = decision.decision === "edited" ? decision.editedTitle ?? decision.title : decision.title;
+      const instruction =
+        decision.decision === "edited" ? decision.editedInstruction ?? decision.instruction : decision.instruction;
+      const rationale =
+        decision.decision === "edited" ? decision.editedRationale ?? decision.rationale : decision.rationale;
       if (instruction.trim().length === 0) {
         warnings.push(
           `Rule decision ${decision.ruleId} is ${decision.decision} but has an empty instruction; excluded from export.`,
@@ -200,9 +204,9 @@ function buildExportableRules({
       return [
         {
           id: rule.id,
-          title: decision.editedTitle ?? decision.title,
+          title,
           instruction,
-          rationale: decision.editedRationale ?? decision.rationale,
+          rationale,
           sourcePrs: decision.sourcePrs,
           sourceCandidateIds: decision.sourceCandidateIds,
           confidence: decision.confidence,

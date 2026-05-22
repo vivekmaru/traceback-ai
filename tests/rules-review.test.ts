@@ -103,6 +103,28 @@ describe("runRulesReview", () => {
     }
   });
 
+  test("rejects draft rules from a different run", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      draftRulesRunId: "2026-05-19T00-00-00Z",
+      rules: [draftRule({})],
+    });
+
+    try {
+      await expect(
+        runRulesReview(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          policy: "conservative",
+          now: new Date("2026-05-18T15:00:00Z"),
+        }),
+      ).rejects.toThrow(
+        "Draft rules run ID 2026-05-19T00-00-00Z does not match requested run ID 2026-05-18T11-35-13Z.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("normalizes manual rule decisions from a file", async () => {
     const repoRoot = await repoWithDraftRules({
       runId: "2026-05-18T11-35-13Z",
@@ -155,6 +177,58 @@ describe("runRulesReview", () => {
         editedRationale: "Tightened wording after human review.",
         reviewedAt: "2026-05-18T15:00:00.000Z",
       });
+      expect(decisionsFile.decisions[0].sourcePrs).toEqual([91]);
+      expect(decisionsFile.decisions[0].sourceCandidateIds).toEqual([
+        "failure-pr-91-review_comment-3241022371",
+      ]);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("preserves manual source-reference edits instead of unioning draft sources", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          sourcePrs: [91],
+          sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
+        }),
+      ],
+    });
+    const manualPath = path.join(repoRoot, "manual-rule-decisions.json");
+    await writeFile(
+      manualPath,
+      `${JSON.stringify(
+        {
+          decisions: [
+            {
+              ruleId: "draft-rule-review-cluster-template",
+              decision: "edited",
+              sourcePrs: [92],
+              sourceCandidateIds: ["failure-pr-92-review_comment-3244623834"],
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    try {
+      const result = await runRulesReview(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        policy: "conservative",
+        from: manualPath,
+        now: new Date("2026-05-18T15:00:00Z"),
+      });
+
+      const decisionsFile = await readJson(path.join(result.rulesDir, "rule-decisions.json"));
+      expect(decisionsFile.decisions[0].sourcePrs).toEqual([92]);
+      expect(decisionsFile.decisions[0].sourceCandidateIds).toEqual([
+        "failure-pr-92-review_comment-3244623834",
+      ]);
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }
@@ -243,13 +317,52 @@ describe("runRulesReview", () => {
       await rm(repoRoot, { recursive: true, force: true });
     }
   });
+
+  test("rejects invalid manual decision values", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [draftRule({})],
+    });
+    const manualPath = path.join(repoRoot, "manual-rule-decisions.json");
+    await writeFile(
+      manualPath,
+      `${JSON.stringify(
+        {
+          decisions: [
+            {
+              ruleId: "draft-rule-review-cluster-template",
+              decision: "acceptd",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    try {
+      await expect(
+        runRulesReview(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          policy: "conservative",
+          from: manualPath,
+          now: new Date("2026-05-18T15:00:00Z"),
+        }),
+      ).rejects.toThrow("Unsupported rule decision value for draft-rule-review-cluster-template: acceptd");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 async function repoWithDraftRules({
   runId,
+  draftRulesRunId,
   rules,
 }: {
   runId: string;
+  draftRulesRunId?: string;
   rules: DraftRule[];
 }): Promise<string> {
   const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-rules-review-"));
@@ -257,7 +370,7 @@ async function repoWithDraftRules({
   await mkdir(rulesDir, { recursive: true });
   const draftFile: DraftRulesFile = {
     schemaVersion: 1,
-    runId,
+    runId: draftRulesRunId ?? runId,
     generatedAt: "2026-05-18T13:00:00.000Z",
     source: {
       decisions: "../../reviews/2026-05-18T11-35-13Z/decisions.json",

@@ -69,6 +69,11 @@ export async function runRulesReview(
   const draftRulesPath = path.join(rulesDir, "draft-rules.json");
   const draftRulesMarkdownPath = path.join(rulesDir, "draft-rules.md");
   const draftRules = await readJson<DraftRulesFile>(draftRulesPath);
+  if (draftRules.runId !== options.runId) {
+    throw new Error(
+      `Draft rules run ID ${draftRules.runId} does not match requested run ID ${options.runId}.`,
+    );
+  }
   await readFile(draftRulesMarkdownPath, "utf8");
 
   const reviewedAt = (options.now ?? new Date()).toISOString();
@@ -214,18 +219,17 @@ function normalizeManualDecisions({
     return {
       ruleId: manualDecision.ruleId,
       runId,
-      decision: normalizeDecisionValue(manualDecision.decision),
+      decision: normalizeDecisionValue(manualDecision.ruleId, manualDecision.decision),
       title: manualDecision.title ?? draftRule?.title ?? "",
       editedTitle: manualDecision.editedTitle ?? null,
       instruction: manualDecision.instruction ?? draftRule?.rule ?? "",
       editedInstruction: manualDecision.editedInstruction ?? null,
       rationale: manualDecision.rationale ?? draftRule?.notes.join(" ").trim() ?? "",
       editedRationale: manualDecision.editedRationale ?? null,
-      sourcePrs: uniqueNumbers([...(draftRule?.sourcePrs ?? []), ...(manualDecision.sourcePrs ?? [])]),
-      sourceCandidateIds: uniqueStrings([
-        ...(draftRule?.sourceCandidateIds ?? []),
-        ...(manualDecision.sourceCandidateIds ?? []),
-      ]),
+      sourcePrs: manualDecision.sourcePrs ? uniqueNumbers(manualDecision.sourcePrs) : draftRule.sourcePrs,
+      sourceCandidateIds: manualDecision.sourceCandidateIds
+        ? uniqueStrings(manualDecision.sourceCandidateIds)
+        : draftRule.sourceCandidateIds,
       confidence: manualDecision.confidence ?? draftRule?.confidence ?? "unknown",
       reason: manualDecision.reason ?? "Imported from manual rule decision file.",
       notes: manualDecision.notes ?? draftRule?.notes ?? [],
@@ -238,12 +242,16 @@ function isRuleDecisionsFile(input: ManualRuleDecisionsInput): input is RuleDeci
   return !Array.isArray(input) && "runId" in input && typeof input.runId === "string";
 }
 
-function normalizeDecisionValue(value: RuleDecisionValue | undefined): RuleDecisionValue {
+function normalizeDecisionValue(ruleId: string, value: RuleDecisionValue | undefined): RuleDecisionValue {
   if (value === "accepted" || value === "rejected" || value === "needs_edit" || value === "edited") {
     return value;
   }
 
-  return "needs_edit";
+  if (value === undefined) {
+    return "needs_edit";
+  }
+
+  throw new Error(`Unsupported rule decision value for ${ruleId}: ${String(value)}`);
 }
 
 function assertUniqueRuleDecisionIds(decisions: RuleDecision[]): void {
