@@ -221,6 +221,10 @@ describe("extractFailureCandidates", () => {
         category: "parser_permissiveness",
       },
       {
+        body: "## Summary\n\n- Add parser guard; parsing fails on malformed input.",
+        category: "parser_permissiveness",
+      },
+      {
         body: "## Summary\n\n- Add guard to avoid forwarding auth headers to the analytics proxy.",
         category: "security_privacy_regression",
       },

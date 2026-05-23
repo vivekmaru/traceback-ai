@@ -302,6 +302,10 @@ Verified on 2026-05-23:
   positive/negative fixture matrix, artifact/function/field names cannot score
   alone, and repeated review comments in one heuristic family should trigger a
   full-family audit before another push.
+- PR #11 follow-up preserved categorized failure-cue PR summaries in the
+  feature-summary suppression gate, so summaries such as parser failures on
+  malformed input are not dropped just because they lack the narrower
+  summary-specific wording.
 
 Environment note:
 

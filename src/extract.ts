@@ -104,6 +104,8 @@ const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
 const PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS: RegExp[] = [
   /\b(?:breaks?|fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently|by)\b/i,
   /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:breaks?|fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
+  /\bfails?\b.{0,80}\b(?:malformed|invalid|parser|parse|decode|input|error|exception|request|upload|render|redirect|headers?|token|auth|state|data)\b/i,
+  /\b(?:malformed|invalid|parser|parse|decode|input|error|exception|request|upload|render|redirect|headers?|token|auth|state|data)\b.{0,80}\bfails?\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
   /\bdoesn['’]?t (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
   /\bthrows?\b.{0,80}\b(?:RangeError|TypeError|error|exception)\b/i,
