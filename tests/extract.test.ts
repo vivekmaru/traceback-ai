@@ -678,6 +678,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Validate draft-rules runId before creating rule decisions")).toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Manual decision dialog crashes when focus is lost")).not.toBe(
+      "human_editable_artifact_validation",
+    );
     expect(detectCategory("Parser coercion accepts malformed values during decode")).toBe(
       "parser_permissiveness",
     );
@@ -686,6 +689,9 @@ describe("deterministic extraction helpers", () => {
         "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
       ),
     ).toBe("identifier_collision_record_loss");
+    expect(detectCategory("CSS selector collisions break layout rendering")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
       "user_input_loss",
     );
@@ -694,14 +700,19 @@ describe("deterministic extraction helpers", () => {
         "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",
       ),
     ).toBe("status_inference_error");
+    expect(detectCategory("Parser mishandles negated predicate")).toBe("parser_permissiveness");
     expect(detectCategory("API schema preserves inReplyTo for review comments")).not.toBe(
       "status_inference_error",
     );
+    expect(detectCategory("Thread context menu fails to open")).not.toBe("status_inference_error");
     expect(
       detectCategory(
         "Support importing more than 100 requested PRs with fixed per_page pagination instead of one truncated pulls page request.",
       ),
     ).toBe("pagination_boundary_error");
+    expect(detectCategory("UI pagination resets current page after refetch")).not.toBe(
+      "pagination_boundary_error",
+    );
     expect(detectCategory("Redirect drops query state when page=2 is preserved")).toBe(
       "query_state_preservation_failure",
     );
