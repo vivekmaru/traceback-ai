@@ -341,6 +341,49 @@ describe("importRecentPullRequests", () => {
     ]);
   });
 
+  test("falls back to empty review threads when optional GraphQL import fails", async () => {
+    process.env.GITHUB_TOKEN = "test-token";
+    const requestedUrls: string[] = [];
+    const fetcher = async (input: string) => {
+      const url = input.toString();
+      requestedUrls.push(url);
+
+      if (url === "https://api.github.com/graphql") {
+        return Response.json(
+          { message: "Resource not accessible by integration" },
+          { status: 403, statusText: "Forbidden" },
+        );
+      }
+      if (url.includes("/pulls?")) {
+        return Response.json([pr(15)]);
+      }
+      if (url.includes("/pulls/15/comments") || url.includes("/pulls/15/reviews")) {
+        return Response.json([]);
+      }
+      if (url.includes("/issues/15/comments")) {
+        return Response.json([]);
+      }
+      if (url.includes("/pulls/15")) {
+        return Response.json(pr(15));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    const [bundle] = await importRecentPullRequests({
+      prs: 1,
+      repository: {
+        owner: "acme",
+        repo: "widgets",
+        remoteUrl: "https://github.com/acme/widgets.git",
+      },
+      fetcher,
+    });
+
+    expect(requestedUrls).toContain("https://api.github.com/graphql");
+    expect(bundle.reviewThreads).toEqual([]);
+  });
+
   test("404 errors mention private repository token access", async () => {
     const fetcher = async () =>
       Response.json({ message: "Not Found" }, { status: 404, statusText: "Not Found" });
