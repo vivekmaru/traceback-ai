@@ -167,9 +167,11 @@ Current behavior:
 
 Remaining quality work:
 
-- Validate statuses against one richer external repository.
 - Tune noisy category mapping from real dogfood runs.
+- Improve candidate review UI filters/search/status evidence.
 - Add evidence quality scoring after status/category quality is trustworthy.
+- Validate on an external repository after the local loop feels sharper and less
+  noisy.
 
 ## Return Path To Original MVP
 
@@ -246,21 +248,38 @@ Verified on 2026-05-23:
 - Browser smoke confirmed the candidate tab renders the status distribution,
   the old all-candidate warning is absent, and desktop layout has no horizontal
   overflow.
+- Refreshed downstream dogfood run from the current 31 candidates with
+  thread-aware statuses.
+- Fresh dry-run analysis wrote
+  `.traceback/analysis/runs/2026-05-23T11-59-47Z/` with 28 `resolved` and 3
+  `candidate` inputs.
+- Provider analysis wrote
+  `.traceback/analysis/runs/2026-05-23T12-02-59Z/`.
+- That provider run produced 31 enriched records and 6 clusters.
+- Conservative review again produced 6 review decisions:
+  5 accepted and 1 needs validation.
+- Draft-rule generation again produced 5 draft rules and excluded the
+  low-confidence informational PR-body cluster.
+- Conservative rule review accepted 5 rules.
+- Export wrote 5 proposed `agents-md` rules to
+  `.traceback/exports/2026-05-23T12-02-59Z/AGENTS.proposed.md`.
+- Compared with the old provider run `2026-05-22T22-58-51Z`: counts were
+  stable, but the new run more clearly labels the PR-body candidates from PRs
+  #5, #7, and #8 as low-confidence informational records. The exported
+  `Traceback Learnings` are clearer but substantively similar.
 
 Environment note:
 
-- `OPENAI_API_KEY` was not set in the Codex shell, but the user ran provider
-  analysis successfully from their terminal.
-- Dry-run analysis is still enough for local artifact-flow testing; provider
-  output is now available for richer UI validation.
+- `OPENAI_API_KEY` is not stored in repo files or `.traceback/` artifacts.
+- The user provided a temporary key for the refreshed provider run and plans to
+  rotate it after use.
 
 ## Next Suggested Step
 
-Use the improved read-only UI against the refreshed dogfood artifacts and decide
-whether the next quality slice should be taxonomy/category tuning or validation
-against a richer external repository. If downstream AI artifacts should reflect
-the new statuses, run a fresh `traceback analyze --provider openai` and continue
-the review/rules/export pipeline from that new run.
+Build the taxonomy/category tuning slice from the refreshed dogfood candidates.
+Start with the three remaining `candidate` PR-body records and the `unknown`
+review-comment categories, then add regression tests before changing extraction
+patterns.
 
 ## Update Rules
 
