@@ -78,6 +78,16 @@ When editing Traceback:
   preserve multiple records that share the same source ID.
 - When tuning extraction heuristics, test standalone and contextual examples.
   Prefer multi-token/contextual signals over broad single-word category matches.
+- For taxonomy/category changes, create a positive/negative fixture matrix before
+  pushing. Every new category signal should include at least one positive
+  contextual example and at least one negative example where the same artifact,
+  function, field, or domain token appears without the failure context.
+- Do not let artifact names, function names, field names, or generic nouns score
+  a category on their own. Pair them with the actual failure semantics, such as
+  validation, collision, record loss, status inference, or import pagination
+  boundary terms.
+- If PR review finds multiple comments in the same heuristic family, pause and
+  audit the whole pattern family before pushing another one-comment fix.
 - Keep status inference thread-local and negation-aware. Do not infer candidate
   outcomes from unrelated PR-level context.
 - Keep pagination and platform-specific shell behavior explicit; test page

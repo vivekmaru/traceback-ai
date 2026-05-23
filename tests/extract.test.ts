@@ -688,6 +688,12 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Edited fields schema parser fails validation")).toBe(
       "parser_permissiveness",
     );
+    expect(detectCategory("Accepted/edited tab crashes when opening settings")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Validate accepted/edited rule decisions before export")).toBe(
+      "human_editable_artifact_validation",
+    );
     expect(detectCategory("Parser coercion accepts malformed values during decode")).toBe(
       "parser_permissiveness",
     );
@@ -699,6 +705,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("CSS selector collisions break layout rendering")).not.toBe(
       "identifier_collision_record_loss",
     );
+    expect(detectCategory("Duplicate DOM IDs break label focus")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("Filename suffixing bug drops uploaded files")).not.toBe(
       "identifier_collision_record_loss",
     );
@@ -708,6 +717,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Include sourceCandidateIds in export output")).not.toBe(
       "identifier_collision_record_loss",
     );
+    expect(detectCategory("Preserve sourceCandidateIds in export output")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("mapRecordsByCandidateId drops duplicate candidate IDs")).toBe(
       "identifier_collision_record_loss",
     );
@@ -715,6 +727,9 @@ describe("deterministic extraction helpers", () => {
       "identifier_collision_record_loss",
     );
     expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
+      "user_input_loss",
+    );
+    expect(detectCategory("React Query refetch overwrites existing form values while editing")).toBe(
       "user_input_loss",
     );
     expect(

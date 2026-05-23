@@ -293,6 +293,15 @@ Verified on 2026-05-23:
 - `bun run build` passed.
 - `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
 - `./dist/cli.js ui --help` passed.
+- Follow-up self-audit after PR #11 review churn tightened the remaining broad
+  taxonomy signals found by applying the same learned rule across the pattern
+  family: bare `accepted/edited`, generic `duplicate IDs`, overwrite/existing
+  language, and `preserve sourceCandidateIds` no longer score the new taxonomy
+  categories without artifact-validation or collision/record-loss context.
+- `AGENTS.md` now documents the taxonomy guardrail: new category signals need a
+  positive/negative fixture matrix, artifact/function/field names cannot score
+  alone, and repeated review comments in one heuristic family should trigger a
+  full-family audit before another push.
 
 Environment note:
 
