@@ -198,6 +198,40 @@ describe("extractFailureCandidates", () => {
     }
   });
 
+  test("still extracts high-signal PR body summaries", () => {
+    const summaries = [
+      {
+        body: "## Summary\n\n- Add retry handling because upload fails intermittently.",
+        category: "unknown",
+      },
+      {
+        body: "## Summary\n\n- Add guard to avoid forwarding auth headers to the analytics proxy.",
+        category: "security_privacy_regression",
+      },
+      {
+        body: "## Summary\n\n- Date.now() is called during render, causing URL regeneration and refetch spam.",
+        category: "render_time_side_effect",
+      },
+    ];
+
+    for (const { body, category } of summaries) {
+      const record = {
+        ...baseRecord,
+        body,
+        issueComments: [],
+        reviewComments: [],
+        reviews: [],
+      };
+
+      const [candidate] = extractFailureCandidates([record]);
+
+      expect(candidate).toMatchObject({
+        sourceType: "pr_body",
+        candidateCategory: category,
+      });
+    }
+  });
+
   test("maps predictable Math.random identifiers to insecure randomness", () => {
     const record = recordWithReviewComment(
       "Math.random() creates predictable random identifiers for uploaded files in offline queues; use cryptographically secure randomness.",
@@ -627,6 +661,9 @@ describe("deterministic extraction helpers", () => {
         "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
       ),
     ).toBe("identifier_collision_record_loss");
+    expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
+      "user_input_loss",
+    );
     expect(
       detectCategory(
         "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",

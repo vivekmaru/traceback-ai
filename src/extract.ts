@@ -53,7 +53,7 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\boverwrites?\b/i,
   /\boverwritten\b/i,
   /\bsensitive\b/i,
-  /\bforwards?\b.*\bheaders?\b/i,
+  /\bforward(?:s|ed|ing)?\b.*\bheaders?\b/i,
   /\bheaders?\b.*\bforwarded\b/i,
   /\bnever draws?\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
@@ -101,6 +101,11 @@ const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
   /\btiming attack\b/i,
 ];
 
+const PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS: RegExp[] = [
+  /\b(?:fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently)\b/i,
+  /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
+];
+
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [
   /\btiming attack\b/i,
   /\bDate\.now\(\)/i,
@@ -145,7 +150,8 @@ const CATEGORY_PATTERNS: Array<{
     patterns: [
       /\bduplicate (?:rule|decision|record|cluster|candidate|source)? ?IDs?\b/i,
       /\bcollisions?\b/i,
-      /\boverwrites?\b/i,
+      /\boverwrites?\b.{0,80}\b(?:earlier|existing|previous|records?|entries|candidate IDs?|sourceCandidateIds?)\b/i,
+      /\b(?:earlier|existing|previous|records?|entries|candidate IDs?|sourceCandidateIds?)\b.{0,80}\boverwrites?\b/i,
       /\bdrops?\b.{0,80}\brecords?\b/i,
       /\brecords?\b.{0,80}\bdrops?\b/i,
       /\benriched records?\b/i,
@@ -593,8 +599,31 @@ function isCandidateFinding(source: SourceItem): boolean {
   const matchesStandaloneFinding = matchesAny(source.body, STANDALONE_FINDING_PATTERNS);
   const matchesFailureCue = matchesAny(source.body, FAILURE_CUE_PATTERNS);
 
-  if (source.sourceType === "pr_body" && isFeatureSummaryPrBody(source.body)) {
-    return false;
+  if (source.sourceType === "pr_body") {
+    if (matchesStandaloneFinding) {
+      return true;
+    }
+
+    const matchesStrongSignal = matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS);
+    const matchesFeatureSummaryFailureCue = matchesAny(
+      source.body,
+      PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS,
+    );
+
+    if (
+      isFeatureSummaryPrBody(source.body) &&
+      !matchesStrongSignal &&
+      !matchesFeatureSummaryFailureCue
+    ) {
+      return false;
+    }
+
+    if (
+      isFeatureSummaryPrBody(source.body) &&
+      (matchesStrongSignal || matchesFeatureSummaryFailureCue)
+    ) {
+      return matchesFailureCue || matchesFeatureSummaryFailureCue;
+    }
   }
 
   if (

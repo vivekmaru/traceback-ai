@@ -276,7 +276,7 @@ Verified on 2026-05-23:
 - Local dogfood extraction after the taxonomy pass generated 28 review-comment
   candidates, 0 PR-body candidates, and 0 `unknown` categories from the current
   imported Traceback records.
-- `bun test` passed with 110 tests.
+- `bun test` passed with 111 tests.
 - `bun run check` passed.
 - `bun run build` passed.
 - `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
