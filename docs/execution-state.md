@@ -306,6 +306,10 @@ Verified on 2026-05-23:
   feature-summary suppression gate, so summaries such as parser failures on
   malformed input are not dropped just because they lack the narrower
   summary-specific wording.
+- PR #11 follow-up widened feature-summary detection to summary sections after
+  template preambles, removed generic `missing data` from the summary failure
+  allowlist, and required validation/loss semantics for `unknown rule IDs` and
+  duplicate-ID taxonomy matches.
 
 Environment note:
 

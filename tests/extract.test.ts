@@ -181,6 +181,8 @@ describe("extractFailureCandidates", () => {
   test("does not extract Traceback feature-summary PR bodies as failures", () => {
     const featureSummaries = [
       "Summary add traceback analyze --dry-run and traceback analyze --provider openai write compact analysis run artifacts under .traceback/analysis/runs/<runId>/ add OpenAI provider isolation, explicit privacy warning, missing-key preservation, strict output validation, and collision-safe run IDs document analysis behavior",
+      "Context\n\n## Summary\n\n- Add traceback analyze --provider openai artifacts.\n- Preserve missing-key diagnostics and collision-safe run IDs.",
+      "## Summary\n\n- Add missing data export report for local review UI.",
       "## Summary\n\n- Add traceback rules export --run --target agents-md for controlled export of accepted draft rules.\n- Write proposed artifacts under .traceback/exports/<runId>/ without modifying root instruction files.\n- Document safety boundaries and add tests for success, missing drafts, unsupported targets, root AGENTS.md preservation.",
       "## Summary\n\n- Add traceback rules review --run --policy conservative for deterministic local rule decisions.\n- Add optional --from normalization for human-edited rule-decision files.\n- Add controlled rules export --target agents-md behavior that prefers rule decisions when present, uses edited fields, excludes rejected and needs_edit.",
     ];
@@ -682,6 +684,12 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Validate draft-rules runId before creating rule decisions")).toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Reject manual decisions that reference unknown rule IDs")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Unknown rule IDs page crashes while filtering docs")).not.toBe(
+      "human_editable_artifact_validation",
+    );
     expect(detectCategory("rule-decisions parser fails on trailing whitespace")).toBe(
       "parser_permissiveness",
     );
@@ -706,6 +714,9 @@ describe("deterministic extraction helpers", () => {
         "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
       ),
     ).toBe("identifier_collision_record_loss");
+    expect(detectCategory("Duplicate candidate IDs reset selected filters")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("CSS selector collisions break layout rendering")).not.toBe(
       "identifier_collision_record_loss",
     );

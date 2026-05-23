@@ -81,7 +81,7 @@ const PR_BODY_STRONG_SIGNAL_PATTERNS: RegExp[] = [
 ];
 
 const PR_BODY_FEATURE_SUMMARY_PATTERNS: RegExp[] = [
-  /^\s*#*\s*summary\b[\s\S]{0,600}\b(?:add|adds|added|implement|implemented|write|writes|document|documents|test|tests|export|exports|analyze|rules|provider|artifacts)\b/i,
+  /(?:^|\n)\s*#*\s*summary\b[\s\S]{0,600}\b(?:add|adds|added|implement|implemented|write|writes|document|documents|test|tests|export|exports|analyze|rules|provider|artifacts)\b/i,
 ];
 
 const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
@@ -102,8 +102,8 @@ const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
 ];
 
 const PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS: RegExp[] = [
-  /\b(?:breaks?|fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently|by)\b/i,
-  /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:breaks?|fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
+  /\b(?:breaks?|fails?|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently|by)\b/i,
+  /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:breaks?|fails?|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
   /\bfails?\b.{0,80}\b(?:malformed|invalid|parser|parse|decode|input|error|exception|request|upload|render|redirect|headers?|token|auth|state|data)\b/i,
   /\b(?:malformed|invalid|parser|parse|decode|input|error|exception|request|upload|render|redirect|headers?|token|auth|state|data)\b.{0,80}\bfails?\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
@@ -148,7 +148,8 @@ const CATEGORY_PATTERNS: Array<{
       /\b(?:rule-decisions?|draft-rules?|rules?|export|runId|manual decision|artifact|file)\b.{0,80}\bhuman-editable\b/i,
       /\bedited(?:Title|Instruction|Rationale| fields?)\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact)\b/i,
       /\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact)\b.{0,80}\bedited(?:Title|Instruction|Rationale| fields?)\b/i,
-      /\bunknown rule IDs?\b/i,
+      /\bunknown rule IDs?\b.{0,80}\b(?:reject|validate|validation|manual decision|rule-decisions?|artifact|export)\b/i,
+      /\b(?:reject|validate|validation|manual decision|rule-decisions?|artifact|export)\b.{0,80}\bunknown rule IDs?\b/i,
       /\binvalid manual decision\b/i,
       /\bmanual decision\b.{0,80}\bcoerc(?:e|ing|ion)\b/i,
       /\bcoerc(?:e|ing|ion)\b.{0,80}\bmanual decision\b/i,
@@ -159,7 +160,8 @@ const CATEGORY_PATTERNS: Array<{
   {
     category: "identifier_collision_record_loss",
     patterns: [
-      /\bduplicate (?:rule|decision|record|cluster|candidate|source) ?IDs?\b/i,
+      /\bduplicate (?:rule|decision|record|cluster|candidate|source) ?IDs?\b.{0,80}\b(?:collision|collide|overwrite|drop|loss|ambiguous|non-unique|record|decision)\b/i,
+      /\b(?:collision|collide|overwrite|drop|loss|ambiguous|non-unique|record|decision)\b.{0,80}\bduplicate (?:rule|decision|record|cluster|candidate|source) ?IDs?\b/i,
       /\bcollisions?\b.{0,80}\b(?:IDs?|records?|candidates?|sourceCandidateIds?|enriched records?|entries)\b/i,
       /\b(?:IDs?|records?|candidates?|sourceCandidateIds?|enriched records?|entries)\b.{0,80}\bcollisions?\b/i,
       /\boverwrites?\b.{0,80}\b(?:records?|entries|candidate IDs?|sourceCandidateIds?)\b/i,
