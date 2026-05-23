@@ -682,6 +682,9 @@ describe("deterministic extraction helpers", () => {
       "human_editable_artifact_validation",
     );
     expect(detectCategory("Human-editable form resets while editing")).toBe("user_input_loss");
+    expect(detectCategory("Edited fields schema parser fails validation")).toBe(
+      "parser_permissiveness",
+    );
     expect(detectCategory("Parser coercion accepts malformed values during decode")).toBe(
       "parser_permissiveness",
     );
@@ -699,6 +702,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Enriched records table omits cluster title")).not.toBe(
       "identifier_collision_record_loss",
     );
+    expect(detectCategory("Include sourceCandidateIds in export output")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
       "user_input_loss",
     );
@@ -707,11 +713,20 @@ describe("deterministic extraction helpers", () => {
         "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",
       ),
     ).toBe("status_inference_error");
+    expect(detectCategory("This breaks protected redirects and is not fixed yet")).toBe(
+      "query_state_preservation_failure",
+    );
     expect(detectCategory("Parser mishandles negated predicate")).toBe("parser_permissiveness");
     expect(detectCategory("API schema preserves inReplyTo for review comments")).not.toBe(
       "status_inference_error",
     );
     expect(detectCategory("Thread context menu fails to open")).not.toBe("status_inference_error");
+    expect(detectCategory("Need whole PR context when rendering replies sidebar")).not.toBe(
+      "status_inference_error",
+    );
+    expect(detectCategory("Replies aggregate list in the sidebar crashes when scrolling")).not.toBe(
+      "status_inference_error",
+    );
     expect(
       detectCategory(
         "Support importing more than 100 requested PRs with fixed per_page pagination instead of one truncated pulls page request.",
@@ -727,6 +742,7 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Requested PR list UI drops selection")).not.toBe(
       "pagination_boundary_error",
     );
+    expect(detectCategory("Base64 content is silently truncated")).toBe("parser_permissiveness");
     expect(detectCategory("Redirect drops query state when page=2 is preserved")).toBe(
       "query_state_preservation_failure",
     );
