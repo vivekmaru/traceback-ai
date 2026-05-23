@@ -49,7 +49,7 @@ describe("getTracebackPaths", () => {
       await mkdir(recordsDir, { recursive: true });
       await writeFile(
         path.join(recordsDir, "pr-91.json"),
-        `${JSON.stringify({ schemaVersion: 1, prNumber: 91, reviewComments: [] })}\n`,
+        `${JSON.stringify({ schemaVersion: 2, prNumber: 91, reviewComments: [] })}\n`,
         "utf8",
       );
 

@@ -10,6 +10,7 @@ import { runReview } from "./review";
 import { runRulesDraft } from "./rules";
 import { runRulesExport } from "./rules-export";
 import { runRulesReview } from "./rules-review";
+import { runUiServer } from "./ui";
 import {
   initTraceback,
   readImportedRecords,
@@ -69,6 +70,13 @@ program
   .option("--from <path>", "read and normalize a manual rule-decisions-style file")
   .option("--target <target>", "export target; currently supports agents-md")
   .action(runRulesCommand);
+
+program
+  .command("ui")
+  .description("Start a local read-only Traceback review UI.")
+  .option("--host <host>", "host to bind", "127.0.0.1")
+  .option("--port <number>", "port to bind", parsePort, 4317)
+  .action(runUiCommand);
 
 program.parseAsync().catch((error: unknown) => {
   printError(error);
@@ -224,6 +232,11 @@ async function runRulesExportCommand(options: { run?: string; target?: string })
   console.log(`Wrote export manifest to ${result.manifestPath}`);
 }
 
+async function runUiCommand(options: { host: string; port: number }): Promise<void> {
+  const repoRoot = await findGitRoot();
+  await runUiServer(repoRoot, { host: options.host, port: options.port });
+}
+
 async function detectRepository(repoRoot: string): Promise<GitHubRepository> {
   const remoteUrl = await readOriginRemote(repoRoot);
   const { owner, repo } = parseGitHubRemote(remoteUrl);
@@ -234,6 +247,14 @@ function parsePrCount(value: string): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new Error("--prs must be a positive integer.");
+  }
+  return parsed;
+}
+
+function parsePort(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    throw new Error("--port must be an integer between 1 and 65535.");
   }
   return parsed;
 }

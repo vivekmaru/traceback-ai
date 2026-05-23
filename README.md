@@ -6,12 +6,17 @@ data into local files, then extracts deterministic candidate failure records
 without calling an LLM. It can optionally enrich those deterministic candidates
 with an OpenAI analysis run.
 
+For product direction and planning, see [docs/roadmap.md](docs/roadmap.md),
+[docs/execution-state.md](docs/execution-state.md), and the point-in-time
+[docs/current-state.md](docs/current-state.md) snapshot. For local artifact
+semantics, see [docs/artifacts.md](docs/artifacts.md).
+
 ## Requirements
 
 - Bun 1.2+
 - A git repository with an `origin` remote pointing at GitHub
-- Optional: `GITHUB_TOKEN` or `GH_TOKEN` for private repositories or higher API
-  rate limits
+- Optional: `GITHUB_TOKEN` or `GH_TOKEN` for private repositories, higher API
+  rate limits, and GitHub review-thread status metadata
 
 ## Setup
 
@@ -34,6 +39,7 @@ bun run traceback review --run <runId> --policy conservative
 bun run traceback rules --run <runId>
 bun run traceback rules review --run <runId> --policy conservative
 bun run traceback rules export --run <runId> --target agents-md
+bun run traceback ui
 ```
 
 After building, the bundled CLI is available at `dist/cli.js`:
@@ -50,6 +56,7 @@ bun run build
 ./dist/cli.js rules --run <runId>
 ./dist/cli.js rules review --run <runId> --policy conservative
 ./dist/cli.js rules export --run <runId> --target agents-md
+./dist/cli.js ui
 ```
 
 ## Commands
@@ -87,7 +94,10 @@ For each PR, Traceback AI stores:
 
 Imported data includes PR metadata, issue comments, review comments, reviews,
 basic diff/file stats, and simple candidate AI/agent markers found in bodies,
-comments, reviews, and authors.
+comments, reviews, and authors. When `GITHUB_TOKEN` or `GH_TOKEN` is available,
+Traceback also imports GitHub review-thread metadata from GraphQL, including
+resolved/outdated state and review comment IDs. Without a token, import keeps
+working and records `reviewThreads: []`.
 
 For private repositories, export a GitHub token before importing. Traceback AI
 reads either `GITHUB_TOKEN` or `GH_TOKEN`, so you can use whichever environment
@@ -159,9 +169,16 @@ query state drops, and render-time side effects.
 
 The extraction is intentionally heuristic. It assigns candidate categories,
 rough severity when priority badges or priority words are present, confidence,
-status hints from nearby replies, and detected AI/agent markers. Re-running
-`traceback extract` refreshes `.traceback/records/failures/` instead of appending
-duplicates.
+status hints from same-thread replies and imported review-thread state, and
+detected AI/agent markers. Candidate statuses can include `candidate`,
+`resolved`, `accepted`, `rejected`, `contested`, `superseded`, and `unknown`.
+`superseded` means GitHub marked the review thread outdated without stronger
+reply or resolution evidence. Re-running `traceback extract` refreshes
+`.traceback/records/failures/` instead of appending duplicates.
+
+Records imported before review-thread support use an older normalized schema.
+If extraction asks you to re-import, run `traceback import --prs <number>` again
+before `traceback extract`.
 
 ### `traceback analyze --dry-run`
 
@@ -408,10 +425,10 @@ or `edited`; `rejected` and `needs_edit` rules are excluded. For edited rules,
 If rule decisions do not exist, export falls back to the existing draft-rule
 behavior and exports accepted draft rules directly.
 
-`AGENTS.proposed.md` is copy-pasteable proposed instruction text. It includes
-the source run ID, generated timestamp, local-only privacy note, exported rules
-grouped by confidence, rationale, source PRs, source evidence, confidence, and
-review decision metadata where available.
+`AGENTS.proposed.md` is clean proposed instruction text for repo-level agent
+guidance. It is intentionally paste-or-review-ready: source PRs, candidate IDs,
+confidence labels, and review-decision metadata stay in `manifest.json`,
+`export-summary.md`, and `.traceback/rules/<runId>/`.
 
 If no exportable rules exist, Traceback writes `export-summary.md` and
 `manifest.json` with a clear warning and does not create a misleading
@@ -426,6 +443,39 @@ Safety boundaries:
 - The command does not write `.cursorrules`.
 - The command does not modify source files, GitHub, or hosted services.
 - The command does not apply the proposed instructions automatically.
+
+### `traceback ui`
+
+Starts a local, read-only review UI for inspecting Traceback artifacts from the
+current repository:
+
+```bash
+traceback ui
+```
+
+By default, the UI binds to `127.0.0.1:4317`. You can override the host or port:
+
+```bash
+traceback ui --host 127.0.0.1 --port 4321
+```
+
+The UI reads `.traceback/` and shows:
+
+- pipeline summary counts
+- candidate status distribution
+- selectable analysis runs and missing-stage guidance
+- deterministic failure candidates
+- selected-run AI clusters when provider output exists
+- selected-run review decisions
+- selected-run draft rules, rule decisions, and exports
+- proposed `Traceback Learnings` text from `AGENTS.proposed.md` when present
+
+Safety boundaries:
+
+- The UI does not call an LLM.
+- The UI does not upload data.
+- The UI does not modify root instruction files or source files.
+- The UI does not apply proposed rules automatically.
 
 ## Privacy Model
 
@@ -446,7 +496,9 @@ Traceback AI is local-only:
   review decisions under `.traceback/rules/<runId>/`.
 - `traceback rules export` is local; it reads draft rules and optional rule
   decisions, then writes proposed output under `.traceback/exports/<runId>/`.
-- No hosted service, GitHub App, local web UI, or TUI is started.
+- `traceback ui` starts a local-only read-only UI for inspecting `.traceback/`
+  artifacts.
+- No hosted service, GitHub App, or TUI is started.
 - Repo instruction files such as `AGENTS.md` are not generated or modified.
 
 `.traceback/` is ignored by git because imported PR data can contain private
@@ -464,6 +516,9 @@ bun run build
 
 - GitHub API access is read-only and best-effort.
 - Large repositories may hit unauthenticated rate limits without a token.
+- GitHub review-thread metadata requires `GITHUB_TOKEN` or `GH_TOKEN`; without a
+  token, statuses can still use REST review-comment replies but not
+  resolved/outdated thread state.
 - The importer fetches recent PRs by GitHub's updated ordering.
 - Candidate AI/agent markers are heuristics, not classification.
 - Failure candidates are deterministic signals, not final AI classification.
@@ -471,13 +526,13 @@ bun run build
   to root repo instruction files.
 - OpenAI analysis output is written locally for review; it is not treated as an
   automatic source of repo instructions.
-- Rule review is file-based and non-interactive; it does not launch an editor or
-  UI.
+- Rule review is file-based and non-interactive; the local UI can inspect rule
+  decisions but does not edit them yet.
 
 ## Next Steps
 
+- Validate the new thread-aware statuses on one richer external repository.
+- Tune taxonomy/category mapping from real dogfood runs.
+- Add editable rule review only after the read-only UI proves useful.
 - Add a guarded apply workflow only after proposed artifacts prove useful in
   manual review.
-- Improve accepted, rejected, contested, and resolved status detection from
-  review threads.
-- Add a tiny local review UI after the local file loop proves useful.

@@ -6,6 +6,7 @@ import type {
   FailureCandidateSourceType,
   FailureCandidateStatus,
   NormalizedPullRequestRecord,
+  NormalizedReviewThread,
 } from "./types";
 
 type SourceItem = {
@@ -18,6 +19,8 @@ type SourceItem = {
   updatedAt: string | null;
   inReplyToId: number | null;
 };
+
+type StatusThread = Pick<NormalizedReviewThread, "isResolved" | "isOutdated">;
 
 const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bbug\b/i,
@@ -345,36 +348,43 @@ export function detectSeverity(body: string): FailureCandidateSeverity | null {
   return null;
 }
 
-export function detectStatus(sourceBody: string, nearbyReplies: string[]): FailureCandidateStatus {
-  for (const replyText of [...nearbyReplies].reverse()) {
-    const replyStatus = detectReplyStatus(replyText);
-    if (replyStatus) {
-      return replyStatus;
+export function detectStatus(
+  sourceBody: string,
+  nearbyReplies: string[],
+  reviewThread: StatusThread | null = null,
+): FailureCandidateStatus {
+  const repliesNewestFirst = [...nearbyReplies].reverse();
+
+  for (const replyText of repliesNewestFirst) {
+    if (matchesAny(replyText, REJECTED_PATTERNS)) {
+      return "rejected";
     }
+    if (
+      matchesAny(replyText, NEGATED_RESOLUTION_PATTERNS) ||
+      matchesAny(replyText, NEGATED_ACCEPTANCE_PATTERNS)
+    ) {
+      return "candidate";
+    }
+    if (matchesAny(replyText, RESOLVED_PATTERNS)) {
+      return "resolved";
+    }
+    if (matchesAny(replyText, ACCEPTED_PATTERNS)) {
+      return "accepted";
+    }
+    if (matchesAny(replyText, CONTESTED_PATTERNS)) {
+      return "contested";
+    }
+  }
+  if (reviewThread?.isResolved) {
+    return "resolved";
   }
   if (matchesAny(`${sourceBody}\n${nearbyReplies.join("\n")}`, CONTESTED_PATTERNS)) {
     return "contested";
   }
+  if (reviewThread?.isOutdated) {
+    return "superseded";
+  }
   return "candidate";
-}
-
-function detectReplyStatus(replyText: string): FailureCandidateStatus | null {
-  if (matchesAny(replyText, REJECTED_PATTERNS)) {
-    return "rejected";
-  }
-  if (
-    matchesAny(replyText, NEGATED_RESOLUTION_PATTERNS) ||
-    matchesAny(replyText, NEGATED_ACCEPTANCE_PATTERNS)
-  ) {
-    return "candidate";
-  }
-  if (matchesAny(replyText, RESOLVED_PATTERNS)) {
-    return "resolved";
-  }
-  if (matchesAny(replyText, ACCEPTED_PATTERNS)) {
-    return "accepted";
-  }
-  return null;
 }
 
 export function detectCategory(body: string): FailureCandidateCategory {
@@ -394,6 +404,7 @@ export function detectCategory(body: string): FailureCandidateCategory {
 
 function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidate[] {
   const sources = collectSources(record);
+  const reviewThreadByCommentId = buildReviewThreadCommentMap(record.reviewThreads);
   const candidates: FailureCandidate[] = [];
 
   for (const source of sources) {
@@ -414,6 +425,10 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       )
       .map((reply) => reply.body)
       .filter(Boolean);
+    const reviewThread =
+      source.sourceType === "review_comment"
+        ? reviewThreadByCommentId.get(String(source.id)) ?? null
+        : null;
 
     candidates.push({
       schemaVersion: 1,
@@ -428,7 +443,7 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       candidateCategory: detectCategory(source.body),
       candidateSeverity: detectSeverity(source.body),
       confidence: detectConfidence(source, record),
-      status: detectStatus(source.body, replyBodies),
+      status: detectStatus(source.body, replyBodies, reviewThread),
       detectedAgentMarkers: detectAgentMarkers(source.body, source.author),
       createdAt: source.createdAt,
       updatedAt: source.updatedAt,
@@ -437,6 +452,18 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
   }
 
   return candidates;
+}
+
+function buildReviewThreadCommentMap(
+  reviewThreads: NormalizedReviewThread[],
+): Map<string, NormalizedReviewThread> {
+  const threadByCommentId = new Map<string, NormalizedReviewThread>();
+  for (const thread of reviewThreads) {
+    for (const commentId of thread.commentIds) {
+      threadByCommentId.set(commentId, thread);
+    }
+  }
+  return threadByCommentId;
 }
 
 function collectSources(record: NormalizedPullRequestRecord): SourceItem[] {
