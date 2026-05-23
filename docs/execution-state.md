@@ -281,6 +281,18 @@ Verified on 2026-05-23:
 - `bun run build` passed.
 - `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
 - `./dist/cli.js ui --help` passed.
+- PR #11 follow-up tightened taxonomy signals that were still too broad:
+  bare `rule-decisions`/`draft-rules` artifact mentions, bare
+  `mapRecordsByCandidateId`, generic review-thread replies UI wording, and
+  requested-PR/table truncation language no longer score the new Traceback
+  categories without the relevant validation, collision, inference, or import
+  boundary context.
+- Regression coverage was added for those four false-positive shapes.
+- `bun test` passed with 111 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
+- `./dist/cli.js ui --help` passed.
 
 Environment note:
 

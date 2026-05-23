@@ -678,6 +678,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Validate draft-rules runId before creating rule decisions")).toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("rule-decisions parser fails on trailing whitespace")).toBe(
+      "parser_permissiveness",
+    );
     expect(detectCategory("Manual decision dialog crashes when focus is lost")).not.toBe(
       "human_editable_artifact_validation",
     );
@@ -705,6 +708,12 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Include sourceCandidateIds in export output")).not.toBe(
       "identifier_collision_record_loss",
     );
+    expect(detectCategory("mapRecordsByCandidateId drops duplicate candidate IDs")).toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("mapRecordsByCandidateId resets form state unexpectedly")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
       "user_input_loss",
     );
@@ -728,6 +737,12 @@ describe("deterministic extraction helpers", () => {
       "status_inference_error",
     );
     expect(
+      detectCategory("Review comment thread replies sidebar crashes when scrolling"),
+    ).not.toBe("status_inference_error");
+    expect(
+      detectCategory("Review comment thread replies infer accepted status incorrectly"),
+    ).toBe("status_inference_error");
+    expect(
       detectCategory(
         "Support importing more than 100 requested PRs with fixed per_page pagination instead of one truncated pulls page request.",
       ),
@@ -740,6 +755,9 @@ describe("deterministic extraction helpers", () => {
       "pagination_boundary_error",
     );
     expect(detectCategory("Requested PR list UI drops selection")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Requested PRs table silently truncated at 40 chars")).not.toBe(
       "pagination_boundary_error",
     );
     expect(detectCategory("Base64 content is silently truncated")).toBe("parser_permissiveness");
