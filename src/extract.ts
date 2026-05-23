@@ -104,6 +104,9 @@ const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
 const PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS: RegExp[] = [
   /\b(?:fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently)\b/i,
   /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
+  /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+  /\bthrows?\b.{0,80}\b(?:RangeError|TypeError|error|exception)\b/i,
+  /\bRangeError\b/i,
 ];
 
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [
@@ -134,7 +137,8 @@ const CATEGORY_PATTERNS: Array<{
     patterns: [
       /\brule-decisions?(?:\.json)?\b/i,
       /\bdraft-rules?(?:\.json)?\b/i,
-      /\brunId\b/i,
+      /\b(?:draft-rules?|rule-decisions?|rules?|export|manual decision).{0,80}\brunId\b/i,
+      /\brunId\b.{0,80}\b(?:draft-rules?|rule-decisions?|rules?|export|manual decision)\b/i,
       /\bmanual decision\b/i,
       /\bhuman-edited\b/i,
       /\bhuman-editable\b/i,

@@ -205,6 +205,14 @@ describe("extractFailureCandidates", () => {
         category: "unknown",
       },
       {
+        body: "## Summary\n\n- Fix renderer because downloaded PNG does not render fields shown in preview.",
+        category: "preview_output_parity_failure",
+      },
+      {
+        body: "## Summary\n\n- Guard parser because malformed input throws RangeError.",
+        category: "parser_permissiveness",
+      },
+      {
         body: "## Summary\n\n- Add guard to avoid forwarding auth headers to the analytics proxy.",
         category: "security_privacy_regression",
       },
@@ -656,6 +664,12 @@ describe("deterministic extraction helpers", () => {
         "Reject invalid manual decision values instead of coercing human-edited rule-decisions.json input.",
       ),
     ).toBe("human_editable_artifact_validation");
+    expect(detectCategory("Status inference uses runId metadata when grouping replies")).toBe(
+      "status_inference_error",
+    );
+    expect(detectCategory("Validate draft-rules runId before creating rule decisions")).toBe(
+      "human_editable_artifact_validation",
+    );
     expect(
       detectCategory(
         "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
