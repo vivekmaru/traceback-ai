@@ -102,9 +102,10 @@ const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
 ];
 
 const PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS: RegExp[] = [
-  /\b(?:fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently)\b/i,
-  /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
+  /\b(?:breaks?|fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently|by)\b/i,
+  /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:breaks?|fails?|missing|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+  /\bdoesn['’]?t (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
   /\bthrows?\b.{0,80}\b(?:RangeError|TypeError|error|exception)\b/i,
   /\bRangeError\b/i,
 ];
@@ -145,7 +146,8 @@ const CATEGORY_PATTERNS: Array<{
       /\bedited(?:Title|Instruction|Rationale| fields?)\b/i,
       /\bunknown rule IDs?\b/i,
       /\binvalid manual decision\b/i,
-      /\bcoerc(?:e|ing|ion)\b/i,
+      /\bmanual decision\b.{0,80}\bcoerc(?:e|ing|ion)\b/i,
+      /\bcoerc(?:e|ing|ion)\b.{0,80}\bmanual decision\b/i,
       /\baccepted\/edited\b/i,
     ],
   },
@@ -174,7 +176,8 @@ const CATEGORY_PATTERNS: Array<{
       /\bacceptance heuristic\b/i,
       /\bnegated\b/i,
       /\bnot fixed yet\b/i,
-      /\binReplyTo\b/i,
+      /\binReplyTo\b.{0,80}\b(?:reply|replies|thread|status|acceptance|resolved|rejected|contested)\b/i,
+      /\b(?:reply|replies|thread|status|acceptance|resolved|rejected|contested)\b.{0,80}\binReplyTo\b/i,
       /\bthread\b.{0,80}\b(?:reply|context|status)\b/i,
       /\breplies\b.{0,80}\b(?:aggregate|whole PR|status)\b/i,
       /\bwhole PR\b.{0,80}\b(?:comments?|replies|context)\b/i,
@@ -186,7 +189,8 @@ const CATEGORY_PATTERNS: Array<{
       /\bper_page\b/i,
       /\bpage size\b/i,
       /\bpaginat(?:e|ed|ion)\b/i,
-      /\bpage=\d+\b/i,
+      /\bpage=\d+\b.{0,80}\b(?:import|imports|pulls?|PRs?|pagination|per_page)\b/i,
+      /\b(?:import|imports|pulls?|PRs?|pagination|per_page)\b.{0,80}\bpage=\d+\b/i,
       /\brequested PRs?\b/i,
       /\babove 100\b/i,
       /\bmore than 100\b/i,

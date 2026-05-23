@@ -209,6 +209,14 @@ describe("extractFailureCandidates", () => {
         category: "preview_output_parity_failure",
       },
       {
+        body: "## Summary\n\n- Fix renderer because downloaded PNG doesn't render fields shown in preview.",
+        category: "preview_output_parity_failure",
+      },
+      {
+        body: "## Summary\n\n- Fix redirect handling because this breaks protected redirects by dropping search params.",
+        category: "query_state_preservation_failure",
+      },
+      {
         body: "## Summary\n\n- Guard parser because malformed input throws RangeError.",
         category: "parser_permissiveness",
       },
@@ -670,6 +678,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Validate draft-rules runId before creating rule decisions")).toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Parser coercion accepts malformed values during decode")).toBe(
+      "parser_permissiveness",
+    );
     expect(
       detectCategory(
         "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
@@ -683,11 +694,17 @@ describe("deterministic extraction helpers", () => {
         "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",
       ),
     ).toBe("status_inference_error");
+    expect(detectCategory("API schema preserves inReplyTo for review comments")).not.toBe(
+      "status_inference_error",
+    );
     expect(
       detectCategory(
         "Support importing more than 100 requested PRs with fixed per_page pagination instead of one truncated pulls page request.",
       ),
     ).toBe("pagination_boundary_error");
+    expect(detectCategory("Redirect drops query state when page=2 is preserved")).toBe(
+      "query_state_preservation_failure",
+    );
   });
 });
 
