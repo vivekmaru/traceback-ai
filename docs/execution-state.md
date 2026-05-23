@@ -310,6 +310,11 @@ Verified on 2026-05-23:
   template preambles, removed generic `missing data` from the summary failure
   allowlist, and required validation/loss semantics for `unknown rule IDs` and
   duplicate-ID taxonomy matches.
+- PR #11 final review follow-up removed remaining generic-token taxonomy
+  triggers: bare `security` no longer bypasses PR-summary suppression, `runId`
+  needs validation semantics for artifact-validation scoring, duplicate-ID and
+  collision patterns need actual collision/loss semantics, and pagination
+  patterns no longer treat generic `request` as import-boundary evidence.
 
 Environment note:
 
