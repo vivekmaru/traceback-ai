@@ -13,7 +13,8 @@ For broader product direction, read `docs/roadmap.md`.
 Tiny local read-only review UI.
 
 Status: first slice implemented; provider-rich dogfood artifacts now available;
-export output now emits instruction-ready `Traceback Learnings`.
+export output now emits instruction-ready `Traceback Learnings`; UI clarity
+slice implemented for selected-run inspection.
 
 ## Why This Is Next
 
@@ -208,6 +209,13 @@ Verified on 2026-05-23:
 - UI API smoke on `http://127.0.0.1:4322/api/state` showed the provider run as
   latest with provider output, 31 enriched records, 6 clusters, 6 review
   decisions, 5 draft rules, 5 rule decisions, and 5 exported rules.
+- The UI now defaults to the latest run, scopes clusters/reviews/rules/exports
+  to the selected run, shows pipeline-stage status with next commands for
+  missing stages, and renders the proposed `Traceback Learnings` export text.
+- Browser smoke on `http://127.0.0.1:4323/` confirmed the provider run is
+  selected by default, the rules/export tab shows the `Traceback Learnings`
+  proposal, desktop and mobile-sized viewports avoid horizontal overflow, and
+  the temporary browser viewport was reset.
 - `./dist/cli.js ui --help` passed.
 - Browser smoke loaded `http://127.0.0.1:4321/`, confirmed summary counts,
   warnings, tab switching, missing cluster/review empty states, and no console
@@ -222,11 +230,12 @@ Environment note:
 
 ## Next Suggested Step
 
-Use the read-only UI against
-`.traceback/analysis/runs/2026-05-22T22-58-51Z/` and its review/rule/export
-artifacts so the AI clusters, review decisions, and rules tabs can be checked
-with richer data. After that, decide whether the next slice should be editable
-rule review or thread-aware outcome/status detection.
+Use the improved read-only UI against
+`.traceback/analysis/runs/2026-05-22T22-58-51Z/` for one more human pass. If the
+pipeline is understandable from the UI alone, the next likely milestone is
+thread-aware outcome/status detection; editable rule review remains useful but
+should not displace the status-quality gap unless the UI review exposes a
+stronger blocker.
 
 ## Update Rules
 

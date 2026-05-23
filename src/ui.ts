@@ -23,6 +23,7 @@ export type UiState = {
   reviewDecisions: UiReviewDecision[];
   draftRules: UiDraftRule[];
   ruleDecisions: UiRuleDecision[];
+  exportItems: UiExport[];
   warnings: string[];
 };
 
@@ -71,6 +72,7 @@ export type UiRun = {
   reviewDecisionItems: UiReviewDecision[];
   draftRuleItems: UiDraftRule[];
   ruleDecisionItems: UiRuleDecision[];
+  exportItem: UiExport | null;
 };
 
 export type UiCluster = {
@@ -113,6 +115,17 @@ export type UiRuleDecision = {
   reason: string;
 };
 
+export type UiExport = {
+  runId: string;
+  target: string;
+  createdAt: string | null;
+  exportedRuleCount: number;
+  warnings: string[];
+  hasProposedAgents: boolean;
+  proposedAgentsText: string | null;
+  summaryText: string | null;
+};
+
 type AnalysisManifest = {
   runId: string;
   mode: string;
@@ -132,6 +145,9 @@ type AnalysisManifest = {
 };
 
 type RulesExportManifest = {
+  runId?: string;
+  target?: string;
+  createdAt?: string;
   exportedRuleCount?: number;
   warnings?: string[];
 };
@@ -157,6 +173,7 @@ export async function loadUiState(repoRoot: string, now = new Date()): Promise<U
     reviewDecisions: runs.flatMap((run) => run.reviewDecisionItems),
     draftRules: runs.flatMap((run) => run.draftRuleItems),
     ruleDecisions: runs.flatMap((run) => run.ruleDecisionItems),
+    exportItems: runs.flatMap((run) => (run.exportItem ? [run.exportItem] : [])),
     warnings,
   };
 }
@@ -225,6 +242,7 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
   const exportManifest = await readJsonIfExists<RulesExportManifest>(
     path.join(paths.exports, runId, "manifest.json"),
   );
+  const exportItem = await readExport(paths.exports, runId, exportManifest);
   const clusterItems = (analysis?.clusters ?? []).map((cluster) => ({
     runId,
     id: cluster.id,
@@ -257,13 +275,38 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
     reviewDecisions: reviews?.decisions.length ?? 0,
     draftRules: draftRules?.rules.length ?? 0,
     ruleDecisions: ruleDecisions?.decisions.length ?? 0,
-    exportedRules: exportManifest?.exportedRuleCount ?? 0,
-    hasProposedAgents: await fileExists(path.join(paths.exports, runId, "AGENTS.proposed.md")),
-    warnings: exportManifest?.warnings ?? [],
+    exportedRules: exportItem?.exportedRuleCount ?? 0,
+    hasProposedAgents: exportItem?.hasProposedAgents ?? false,
+    warnings: exportItem?.warnings ?? [],
     clusterItems,
     reviewDecisionItems,
     draftRuleItems,
     ruleDecisionItems,
+    exportItem,
+  };
+}
+
+async function readExport(
+  exportsRoot: string,
+  runId: string,
+  manifest: RulesExportManifest | null,
+): Promise<UiExport | null> {
+  if (!manifest) {
+    return null;
+  }
+
+  const exportDir = path.join(exportsRoot, runId);
+  const proposedAgentsText = await readTextIfExists(path.join(exportDir, "AGENTS.proposed.md"));
+  const summaryText = await readTextIfExists(path.join(exportDir, "export-summary.md"));
+  return {
+    runId,
+    target: manifest.target ?? "unknown",
+    createdAt: manifest.createdAt ?? null,
+    exportedRuleCount: manifest.exportedRuleCount ?? 0,
+    warnings: manifest.warnings ?? [],
+    hasProposedAgents: proposedAgentsText !== null,
+    proposedAgentsText,
+    summaryText,
   };
 }
 
@@ -313,6 +356,17 @@ async function readJsonFiles<T>(
 async function readJsonIfExists<T>(filePath: string): Promise<T | null> {
   try {
     return JSON.parse(await readFile(filePath, "utf8")) as T;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function readTextIfExists(filePath: string): Promise<string | null> {
+  try {
+    return await readFile(filePath, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
@@ -557,10 +611,72 @@ function renderHtml(): string {
       cursor: pointer;
     }
 
+    .run-select {
+      width: 100%;
+      text-align: left;
+      padding: 14px;
+    }
+
     button[aria-selected="true"] {
       border-color: var(--accent);
       background: var(--accent-soft);
       color: var(--accent);
+    }
+
+    .run-select[aria-current="true"] {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .intro {
+      max-width: 980px;
+      color: var(--muted);
+    }
+
+    .overview {
+      display: grid;
+      gap: 14px;
+    }
+
+    .overview-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+    }
+
+    .stage {
+      display: grid;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfbf9;
+      min-width: 0;
+    }
+
+    .stage code, .proposal, .value {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+
+    .legend-item {
+      display: grid;
+      gap: 2px;
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .section {
@@ -583,12 +699,12 @@ function renderHtml(): string {
     }
 
     .run {
-      grid-template-columns: minmax(170px, 1.2fr) repeat(6, minmax(82px, .7fr));
+      grid-template-columns: minmax(190px, 1.2fr) repeat(6, minmax(96px, .7fr));
       align-items: center;
     }
 
     .candidate {
-      grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(100px, .7fr));
+      grid-template-columns: minmax(260px, 1.4fr) repeat(4, minmax(120px, .7fr));
     }
 
     .run, .candidate {
@@ -599,6 +715,11 @@ function renderHtml(): string {
     .label {
       color: var(--muted);
       font-size: 12px;
+    }
+
+    .value {
+      display: inline-block;
+      max-width: 100%;
     }
 
     .pill {
@@ -632,6 +753,13 @@ function renderHtml(): string {
     a:hover { text-decoration: underline; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
+    .proposal {
+      margin: 0;
+      white-space: pre-wrap;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--ink);
+    }
+
     .empty {
       color: var(--muted);
       padding: 18px;
@@ -657,6 +785,7 @@ function renderHtml(): string {
   <main>
     <section class="grid" id="summary"></section>
     <section class="warnings" id="warnings"></section>
+    <section id="selected-run"></section>
     <nav class="tabs" aria-label="Traceback views">
       <button type="button" data-tab="runs" aria-selected="true">Runs</button>
       <button type="button" data-tab="candidates" aria-selected="false">Candidates</button>
@@ -671,7 +800,7 @@ function renderHtml(): string {
     <section class="section" id="rules"></section>
   </main>
   <script>
-    const state = { data: null };
+    const state = { data: null, selectedRunId: null };
 
     async function load() {
       const response = await fetch("/api/state");
@@ -682,15 +811,20 @@ function renderHtml(): string {
 
     function render() {
       const data = state.data;
+      if (!state.selectedRunId || !data.runs.some((run) => run.runId === state.selectedRunId)) {
+        state.selectedRunId = data.runs[0]?.runId ?? null;
+      }
       document.getElementById("repo-root").textContent = data.repoRoot;
       document.getElementById("generated-at").textContent = "Generated " + formatDate(data.generatedAt);
       renderSummary(data.summary);
       renderWarnings(data.warnings);
+      renderSelectedRun(data);
       renderRuns(data.runs);
       renderCandidates(data.candidates);
-      renderClusters(data.clusters);
-      renderReviewDecisions(data.reviewDecisions);
-      renderRules(data.runs, data.draftRules, data.ruleDecisions);
+      const selectedRun = getSelectedRun();
+      renderClusters(selectedRun);
+      renderReviewDecisions(selectedRun);
+      renderRules(selectedRun);
     }
 
     function renderSummary(summary) {
@@ -717,34 +851,81 @@ function renderHtml(): string {
       \`).join("");
     }
 
+    function renderSelectedRun(data) {
+      const container = document.getElementById("selected-run");
+      const run = getSelectedRun();
+      if (!run) {
+        container.innerHTML = \`<article class="card overview">\${emptyContent("No analysis run selected.")}</article>\`;
+        return;
+      }
+
+      const provider = run.provider ? run.provider : "none";
+      container.innerHTML = \`
+        <article class="card overview">
+          <div class="overview-head">
+            <div>
+              <span class="label">Selected run</span>
+              <h2>\${escapeHtml(run.runId)}</h2>
+              <p>Mode \${escapeHtml(run.mode)} · Provider \${escapeHtml(provider)} · \${escapeHtml(formatDate(run.createdAt))}</p>
+            </div>
+            <div>
+              <span class="label">Provider output</span><br>
+              \${statusPill(run.hasProviderOutput ? "present" : "missing", run.hasProviderOutput ? "good" : "warn")}
+            </div>
+          </div>
+          <div class="grid">
+            \${metric("Candidates", run.failureCandidateCount)}
+            \${metric("Enriched records", run.enrichedRecords)}
+            \${metric("Clusters", run.clusters)}
+            \${metric("Review decisions", run.reviewDecisions)}
+            \${metric("Draft rules", run.draftRules)}
+            \${metric("Rule decisions", run.ruleDecisions)}
+            \${metric("Exported rules", run.exportedRules)}
+          </div>
+          <div>
+            <h3>Pipeline stages</h3>
+            <div class="stage-grid">\${stageCards(data.summary, run)}</div>
+          </div>
+        </article>
+      \`;
+    }
+
     function renderRuns(runs) {
       const container = document.getElementById("runs");
-      container.innerHTML = "<h2>Runs overview</h2>" + (runs.length ? \`
+      container.innerHTML = "<h2>Runs overview</h2><p class='intro'>Each row is an analysis run. Select a run to inspect its clusters, decisions, rules, and export output.</p>" + (runs.length ? \`
         <div class="list">
           \${runs.map((run) => \`
-            <article class="card run">
-              <div>
-                <h3>\${escapeHtml(run.runId)}</h3>
-                <p>\${escapeHtml(formatDate(run.createdAt))}</p>
-              </div>
-              \${field("Mode", run.mode)}
-              \${field("Candidates", run.failureCandidateCount)}
-              \${field("Clusters", run.clusters)}
-              \${field("Reviews", run.reviewDecisions)}
-              \${field("Rules", run.draftRules)}
-              <div>
-                <span class="label">Provider output</span><br>
-                \${statusPill(run.hasProviderOutput ? "present" : "missing", run.hasProviderOutput ? "good" : "warn")}
-              </div>
-            </article>
+            <button type="button" class="run-select" data-run-id="\${escapeHtml(run.runId)}" aria-current="\${String(run.runId === state.selectedRunId)}">
+              <span class="run">
+                <span>
+                  <strong>\${escapeHtml(run.runId)}</strong><br>
+                  <span class="value">\${escapeHtml(formatDate(run.createdAt))}</span>
+                </span>
+                \${field("Mode", run.mode)}
+                \${field("Candidates", run.failureCandidateCount)}
+                \${field("Clusters", run.clusters)}
+                \${field("Reviews", run.reviewDecisions)}
+                \${field("Rules", run.draftRules)}
+                <span>
+                  <span class="label">Provider output</span><br>
+                  \${statusPill(run.hasProviderOutput ? "present" : "missing", run.hasProviderOutput ? "good" : "warn")}
+                </span>
+              </span>
+            </button>
           \`).join("")}
         </div>
       \` : empty("No analysis runs found."));
+      container.querySelectorAll("[data-run-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.selectedRunId = button.dataset.runId;
+          render();
+        });
+      });
     }
 
     function renderCandidates(candidates) {
       const container = document.getElementById("candidates");
-      container.innerHTML = "<h2>Failure candidates</h2>" + (candidates.length ? \`
+      container.innerHTML = "<h2>Failure candidates</h2><p class='intro'>These are deterministic inputs extracted from imported PR evidence. They are candidates, not final confirmed failures.</p>" + (candidates.length ? \`
         <div class="list">
           \${candidates.map((candidate) => \`
             <article class="card candidate">
@@ -767,9 +948,10 @@ function renderHtml(): string {
       \` : empty("No failure candidates found."));
     }
 
-    function renderClusters(clusters) {
+    function renderClusters(run) {
       const container = document.getElementById("clusters");
-      container.innerHTML = "<h2>AI clusters</h2>" + (clusters.length ? \`
+      const clusters = run?.clusterItems ?? [];
+      container.innerHTML = "<h2>AI clusters</h2><p class='intro'>Clusters are provider-enriched groupings of related deterministic candidates for the selected run.</p>" + (clusters.length ? \`
         <div class="list">
           \${clusters.map((cluster) => \`
             <article class="card row">
@@ -790,12 +972,13 @@ function renderHtml(): string {
             </article>
           \`).join("")}
         </div>
-      \` : empty("No AI clusters found. Provider output may be missing for these runs."));
+      \` : empty(run ? "No AI clusters found for the selected run. Provider output may be missing." : "No run selected."));
     }
 
-    function renderReviewDecisions(decisions) {
+    function renderReviewDecisions(run) {
       const container = document.getElementById("reviews");
-      container.innerHTML = "<h2>Review decisions</h2>" + (decisions.length ? \`
+      const decisions = run?.reviewDecisionItems ?? [];
+      container.innerHTML = "<h2>Review decisions</h2><p class='intro'>Conservative review turns AI clusters into local decisions before any rule draft is generated.</p>" + renderReviewLegend() + (decisions.length ? \`
         <div class="list">
           \${decisions.map((decision) => \`
             <article class="card candidate">
@@ -810,31 +993,35 @@ function renderHtml(): string {
             </article>
           \`).join("")}
         </div>
-      \` : empty("No review decisions found for the available runs."));
+      \` : empty(run ? "No review decisions found for the selected run." : "No run selected."));
     }
 
-    function renderRules(runs, draftRules, ruleDecisions) {
-      const rows = runs.filter((run) => run.draftRules || run.ruleDecisions || run.exportedRules || run.hasProposedAgents);
+    function renderRules(run) {
       const container = document.getElementById("rules");
-      const runHtml = rows.length ? \`
+      if (!run) {
+        container.innerHTML = "<h2>Rules and exports</h2>" + empty("No run selected.");
+        return;
+      }
+      const draftRules = run.draftRuleItems ?? [];
+      const ruleDecisions = run.ruleDecisionItems ?? [];
+      const exportItem = run.exportItem;
+      const runHtml = \`
         <div class="list">
-          \${rows.map((run) => \`
-            <article class="card run">
-              <div>
-                <h3>\${escapeHtml(run.runId)}</h3>
-                <p>\${run.warnings.length ? escapeHtml(run.warnings.join(" ")) : "No export warnings."}</p>
-              </div>
-              \${field("Draft rules", run.draftRules)}
-              \${field("Rule decisions", run.ruleDecisions)}
-              \${field("Exported rules", run.exportedRules)}
-              <div>
-                <span class="label">AGENTS proposal</span><br>
-                \${statusPill(run.hasProposedAgents ? "present" : "missing", run.hasProposedAgents ? "good" : "warn")}
-              </div>
-            </article>
-          \`).join("")}
+          <article class="card run">
+            <div>
+              <h3>\${escapeHtml(run.runId)}</h3>
+              <p>\${run.warnings.length ? escapeHtml(run.warnings.join(" ")) : "No export warnings."}</p>
+            </div>
+            \${field("Draft rules", run.draftRules)}
+            \${field("Rule decisions", run.ruleDecisions)}
+            \${field("Exported rules", run.exportedRules)}
+            <div>
+              <span class="label">AGENTS proposal</span><br>
+              \${statusPill(run.hasProposedAgents ? "present" : "missing", run.hasProposedAgents ? "good" : "warn")}
+            </div>
+          </article>
         </div>
-      \` : empty("No draft rules or exports found.");
+      \`;
       const rulesHtml = draftRules.length ? \`
         <h3>Draft rules</h3>
         <div class="list">
@@ -850,6 +1037,7 @@ function renderHtml(): string {
       \` : "";
       const decisionsHtml = ruleDecisions.length ? \`
         <h3>Rule decisions</h3>
+        \${renderRuleLegend()}
         <div class="list">
           \${ruleDecisions.map((decision) => \`
             <article class="card row">
@@ -862,11 +1050,79 @@ function renderHtml(): string {
           \`).join("")}
         </div>
       \` : "";
-      container.innerHTML = "<h2>Rules and exports</h2>" + runHtml + rulesHtml + decisionsHtml;
+      const exportHtml = exportItem ? \`
+        <h3>Proposed export</h3>
+        <article class="card row">
+          \${field("Target", exportItem.target)}
+          \${field("Created", formatDate(exportItem.createdAt))}
+          \${field("Exported rules", exportItem.exportedRuleCount)}
+          \${field("Warnings", exportItem.warnings.length ? exportItem.warnings.join(" ") : "none")}
+          \${exportItem.proposedAgentsText ? \`<pre class="proposal">\${escapeHtml(exportItem.proposedAgentsText)}</pre>\` : "<p>No AGENTS.proposed.md was written for this run.</p>"}
+        </article>
+      \` : "";
+      container.innerHTML = "<h2>Rules and exports</h2><p class='intro'>Draft rules are working artifacts. Rule decisions decide what can be exported. The proposed export is reviewable guidance and is not applied automatically.</p>" + runHtml + rulesHtml + decisionsHtml + exportHtml;
     }
 
     function field(label, value) {
-      return \`<div><span class="label">\${escapeHtml(label)}</span><br><span>\${escapeHtml(String(value))}</span></div>\`;
+      return \`<span><span class="label">\${escapeHtml(label)}</span><br><span class="value">\${escapeHtml(String(value))}</span></span>\`;
+    }
+
+    function metric(label, value) {
+      return \`
+        <article class="metric">
+          <span class="label">\${escapeHtml(label)}</span>
+          <strong>\${escapeHtml(String(value))}</strong>
+        </article>
+      \`;
+    }
+
+    function stageCards(summary, run) {
+      return [
+        stage("Import", summary.importedPrs > 0, summary.importedPrs + " PR records", "traceback import --prs <number>"),
+        stage("Extract", summary.failureCandidates > 0, summary.failureCandidates + " candidates", "traceback extract"),
+        stage("Analyze", run.hasInput && run.hasPrompt, run.hasProviderOutput ? "provider output present" : "input and prompt only", "traceback analyze --provider openai"),
+        stage("Review", run.reviewDecisions > 0, run.reviewDecisions + " decisions", "traceback review --run " + run.runId + " --policy conservative"),
+        stage("Draft rules", run.draftRules > 0, run.draftRules + " draft rules", "traceback rules --run " + run.runId),
+        stage("Rule review", run.ruleDecisions > 0, run.ruleDecisions + " rule decisions", "traceback rules review --run " + run.runId + " --policy conservative"),
+        stage("Export", run.exportItem !== null, run.exportedRules + " exported rules", "traceback rules export --run " + run.runId + " --target agents-md"),
+      ].join("");
+    }
+
+    function stage(label, isPresent, detail, command) {
+      return \`
+        <div class="stage">
+          <strong>\${escapeHtml(label)}</strong>
+          \${statusPill(isPresent ? "present" : "missing", isPresent ? "good" : "warn")}
+          <span class="value">\${escapeHtml(detail)}</span>
+          \${isPresent ? "" : \`<code>\${escapeHtml(command)}</code>\`}
+        </div>
+      \`;
+    }
+
+    function renderReviewLegend() {
+      return \`
+        <div class="card legend">
+          \${legendItem("accepted", "High-confidence cluster backed by review-comment evidence.")}
+          \${legendItem("needs_validation", "Low-confidence or PR-body-only evidence needs human validation.")}
+          \${legendItem("needs_cluster", "An enriched record was not represented in any cluster.")}
+          \${legendItem("needs_review", "Source references or evidence shape need manual review.")}
+        </div>
+      \`;
+    }
+
+    function renderRuleLegend() {
+      return \`
+        <div class="card legend">
+          \${legendItem("accepted", "Exportable as-is.")}
+          \${legendItem("edited", "Exportable using edited instruction fields.")}
+          \${legendItem("needs_edit", "Not exportable until edited.")}
+          \${legendItem("rejected", "Not exportable.")}
+        </div>
+      \`;
+    }
+
+    function legendItem(label, description) {
+      return \`<span class="legend-item"><strong>\${escapeHtml(label)}</strong><span>\${escapeHtml(description)}</span></span>\`;
     }
 
     function statusPill(label, tone) {
@@ -879,6 +1135,14 @@ function renderHtml(): string {
 
     function empty(message) {
       return \`<article class="card empty">\${escapeHtml(message)}</article>\`;
+    }
+
+    function emptyContent(message) {
+      return \`<div class="empty">\${escapeHtml(message)}</div>\`;
+    }
+
+    function getSelectedRun() {
+      return state.data?.runs.find((run) => run.runId === state.selectedRunId) ?? null;
     }
 
     function formatDate(value) {

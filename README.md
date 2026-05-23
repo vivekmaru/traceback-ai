@@ -452,11 +452,12 @@ traceback ui --host 127.0.0.1 --port 4321
 The UI reads `.traceback/` and shows:
 
 - pipeline summary counts
-- analysis runs and missing stages
-- failure candidates
-- AI clusters when provider output exists
-- review decisions
-- draft rules, rule decisions, and exports
+- selectable analysis runs and missing-stage guidance
+- deterministic failure candidates
+- selected-run AI clusters when provider output exists
+- selected-run review decisions
+- selected-run draft rules, rule decisions, and exports
+- proposed `Traceback Learnings` text from `AGENTS.proposed.md` when present
 
 Safety boundaries:
 

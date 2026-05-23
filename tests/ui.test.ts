@@ -167,7 +167,14 @@ describe("loadUiState", () => {
         exportedRuleCount: 1,
         warnings: [],
       });
-      await writeFile(path.join(repoRoot, ".traceback", "exports", runId, "AGENTS.proposed.md"), "# Proposed\n");
+      await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "AGENTS.proposed.md"),
+        "## Traceback Learnings\n\nWhen editing Traceback:\n\n- Preserve provenance.\n",
+      );
+      await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "export-summary.md"),
+        "# Traceback Rule Export Summary\n\n- Rules exported: 1\n",
+      );
 
       const state = await loadUiState(repoRoot, new Date("2026-05-22T13:15:00.000Z"));
 
@@ -188,9 +195,86 @@ describe("loadUiState", () => {
         exportedRules: 1,
         hasProposedAgents: true,
       });
+      expect(state.runs[0].clusterItems).toHaveLength(1);
+      expect(state.runs[0].reviewDecisionItems).toHaveLength(2);
+      expect(state.runs[0].draftRuleItems).toHaveLength(1);
+      expect(state.runs[0].ruleDecisionItems).toHaveLength(1);
+      const exportItem = state.runs[0].exportItem;
+      if (exportItem === null) {
+        throw new Error("Expected export item to be present.");
+      }
+      expect(exportItem).toMatchObject({
+        runId,
+        target: "agents-md",
+        createdAt: "2026-05-22T13:14:00.000Z",
+        exportedRuleCount: 1,
+        hasProposedAgents: true,
+        proposedAgentsText: "## Traceback Learnings\n\nWhen editing Traceback:\n\n- Preserve provenance.\n",
+        summaryText: "# Traceback Rule Export Summary\n\n- Rules exported: 1\n",
+      });
+      expect(state.exportItems).toHaveLength(1);
+      expect(state.exportItems[0]).toBe(exportItem);
       expect(state.warnings).not.toContain(
         "All extracted candidates are still marked `candidate`; thread-aware outcome detection is a known quality gap.",
       );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("represents export warnings when proposed AGENTS output is missing", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-ui-"));
+    const runId = "2026-05-22T14-00-00Z";
+
+    try {
+      await writeJson(path.join(repoRoot, ".traceback", "records", "pr-10.json"), record(10));
+      await writeJson(path.join(repoRoot, ".traceback", "analysis", "runs", runId, "manifest.json"), {
+        runId,
+        mode: "provider",
+        provider: "openai",
+        createdAt: "2026-05-22T14:00:00.000Z",
+        source: {
+          failureCandidateCount: 0,
+        },
+        files: {
+          input: "input.json",
+          prompt: "prompt.md",
+          response: "response.json",
+          enrichedRecords: "enriched-records.json",
+          clusters: "clusters.json",
+          summary: "analysis-summary.md",
+        },
+      });
+      await writeJson(path.join(repoRoot, ".traceback", "exports", runId, "manifest.json"), {
+        schemaVersion: 1,
+        runId,
+        target: "agents-md",
+        createdAt: "2026-05-22T14:05:00.000Z",
+        sourceDraftRulesPath: "draft-rules.json",
+        sourceDraftRulesMarkdownPath: "draft-rules.md",
+        outputs: ["export-summary.md", "manifest.json"],
+        exportedRuleCount: 0,
+        warnings: ["No exportable rules were found."],
+      });
+      await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "export-summary.md"),
+        "# Traceback Rule Export Summary\n\nNo AGENTS.proposed.md written.\n",
+      );
+
+      const state = await loadUiState(repoRoot, new Date("2026-05-22T14:10:00.000Z"));
+
+      expect(state.summary.exports).toBe(0);
+      expect(state.runs[0].exportItem).toMatchObject({
+        runId,
+        target: "agents-md",
+        exportedRuleCount: 0,
+        warnings: ["No exportable rules were found."],
+        hasProposedAgents: false,
+        proposedAgentsText: null,
+        summaryText: "# Traceback Rule Export Summary\n\nNo AGENTS.proposed.md written.\n",
+      });
+      expect(state.runs[0].warnings).toEqual(["No exportable rules were found."]);
+      expect(state.exportItems).toHaveLength(1);
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }
