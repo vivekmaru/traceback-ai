@@ -12,9 +12,10 @@ For broader product direction, read `docs/roadmap.md`.
 
 Tiny local read-only review UI.
 
-Status: first slice implemented; provider-rich dogfood artifacts now available;
-export output now emits instruction-ready `Traceback Learnings`; UI clarity
-slice implemented for selected-run inspection.
+Status: first UI slice implemented; provider-rich dogfood artifacts now
+available; export output now emits instruction-ready `Traceback Learnings`;
+thread-aware outcome/status detection implemented for GitHub review replies,
+resolved review threads, and outdated review threads.
 
 ## Why This Is Next
 
@@ -148,18 +149,27 @@ bun run build
 
 Browser smoke verified desktop and mobile-sized viewports.
 
-## Known Quality Gap To Track
+## Status Detection Quality
 
-Thread-aware outcome/status detection is the highest-value quality gap.
+Thread-aware outcome/status detection is now implemented for imported GitHub PR
+records when `GITHUB_TOKEN` or `GH_TOKEN` is available.
 
-The 2026-05-22 dogfood run extracted 31 candidates from Traceback's own merged
-PRs, but all were still marked `candidate`. The tool is underusing the strongest
-GitHub signals: review replies, resolved threads, contested findings, follow-up
-commits, and merge outcomes.
+Current behavior:
 
-This should not block the first UI milestone. Instead, the UI should make this
-gap visible. After the first UI slice, status detection is a likely next
-milestone.
+- Import writes normalized v3 records with `reviewThreads`.
+- No-token imports continue with `reviewThreads: []`.
+- Extraction rejects older v2 records with a re-import message.
+- Same-thread replies can infer `resolved`, `accepted`, `rejected`, and
+  `contested`.
+- GitHub `isResolved` infers `resolved` when no stronger reply signal exists.
+- GitHub `isOutdated` infers `superseded` when no stronger signal exists.
+- PR merge alone does not mark a candidate resolved or accepted.
+
+Remaining quality work:
+
+- Validate statuses against one richer external repository.
+- Tune noisy category mapping from real dogfood runs.
+- Add evidence quality scoring after status/category quality is trustworthy.
 
 ## Return Path To Original MVP
 
@@ -220,6 +230,22 @@ Verified on 2026-05-23:
 - Browser smoke loaded `http://127.0.0.1:4321/`, confirmed summary counts,
   warnings, tab switching, missing cluster/review empty states, and no console
   errors or warnings.
+- Thread-aware status detection slice added GitHub GraphQL review-thread import,
+  normalized record schema v3, `superseded` candidate status, and UI status
+  distribution.
+- `bun test` passed with 106 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- Fresh dogfood import with `GITHUB_TOKEN="$(gh auth token)" ./dist/cli.js
+  import --prs 8` wrote v3 records with review-thread metadata.
+- Fresh `./dist/cli.js extract` generated 31 candidates with status
+  distribution: 28 `resolved`, 3 `candidate`.
+- `./dist/cli.js ui --help` passed.
+- UI API smoke on `http://127.0.0.1:4324/api/state` showed
+  `statusCounts: { resolved: 28, candidate: 3 }` and no global warnings.
+- Browser smoke confirmed the candidate tab renders the status distribution,
+  the old all-candidate warning is absent, and desktop layout has no horizontal
+  overflow.
 
 Environment note:
 
@@ -230,12 +256,11 @@ Environment note:
 
 ## Next Suggested Step
 
-Use the improved read-only UI against
-`.traceback/analysis/runs/2026-05-22T22-58-51Z/` for one more human pass. If the
-pipeline is understandable from the UI alone, the next likely milestone is
-thread-aware outcome/status detection; editable rule review remains useful but
-should not displace the status-quality gap unless the UI review exposes a
-stronger blocker.
+Use the improved read-only UI against the refreshed dogfood artifacts and decide
+whether the next quality slice should be taxonomy/category tuning or validation
+against a richer external repository. If downstream AI artifacts should reflect
+the new statuses, run a fresh `traceback analyze --provider openai` and continue
+the review/rules/export pipeline from that new run.
 
 ## Update Rules
 

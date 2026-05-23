@@ -1,4 +1,4 @@
-export const NORMALIZED_RECORD_SCHEMA_VERSION = 2;
+export const NORMALIZED_RECORD_SCHEMA_VERSION = 3;
 
 export type GitHubRepository = {
   owner: string;
@@ -61,12 +61,29 @@ export type GitHubReview = {
   html_url?: string | null;
 };
 
+export type GitHubReviewThreadComment = {
+  id: string;
+  fullDatabaseId?: number | string | null;
+  url?: string | null;
+};
+
+export type GitHubReviewThread = {
+  id: string;
+  isResolved: boolean;
+  isOutdated: boolean;
+  path: string | null;
+  line: number | null;
+  startLine: number | null;
+  comments: GitHubReviewThreadComment[];
+};
+
 export type RawPullRequestBundle = {
   importedAt: string;
   repository: GitHubRepository;
   pullRequest: GitHubPullRequest;
   issueComments: GitHubIssueComment[];
   reviewComments: GitHubReviewComment[];
+  reviewThreads: GitHubReviewThread[];
   reviews: GitHubReview[];
 };
 
@@ -94,6 +111,16 @@ export type NormalizedReview = {
   state: string | null;
   submittedAt: string | null;
   url: string | null;
+};
+
+export type NormalizedReviewThread = {
+  id: string;
+  isResolved: boolean;
+  isOutdated: boolean;
+  path: string | null;
+  line: number | null;
+  startLine: number | null;
+  commentIds: number[];
 };
 
 export type CandidateAgentMarker = {
@@ -138,6 +165,7 @@ export type FailureCandidateStatus =
   | "rejected"
   | "contested"
   | "resolved"
+  | "superseded"
   | "unknown";
 
 export type FailureCandidate = {
@@ -161,7 +189,7 @@ export type FailureCandidate = {
 };
 
 export type NormalizedPullRequestRecord = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   importedAt: string;
   repository: GitHubRepository;
   prNumber: number;
@@ -184,6 +212,7 @@ export type NormalizedPullRequestRecord = {
   deletions: number | null;
   issueComments: NormalizedComment[];
   reviewComments: NormalizedReviewComment[];
+  reviewThreads: NormalizedReviewThread[];
   reviews: NormalizedReview[];
   candidateAgentMarkers: CandidateAgentMarker[];
 };

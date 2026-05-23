@@ -3,10 +3,12 @@ import type {
   GitHubIssueComment,
   GitHubReview,
   GitHubReviewComment,
+  GitHubReviewThread,
   NormalizedComment,
   NormalizedPullRequestRecord,
   NormalizedReview,
   NormalizedReviewComment,
+  NormalizedReviewThread,
   RawPullRequestBundle,
 } from "./types";
 import { NORMALIZED_RECORD_SCHEMA_VERSION } from "./types";
@@ -27,6 +29,7 @@ export function normalizePullRequestRecord(
   const pr = bundle.pullRequest;
   const issueComments = bundle.issueComments.map(normalizeIssueComment);
   const reviewComments = bundle.reviewComments.map(normalizeReviewComment);
+  const reviewThreads = bundle.reviewThreads.map(normalizeReviewThread);
   const reviews = bundle.reviews.map(normalizeReview);
 
   return {
@@ -53,6 +56,7 @@ export function normalizePullRequestRecord(
     deletions: pr.deletions ?? null,
     issueComments,
     reviewComments,
+    reviewThreads,
     reviews,
     candidateAgentMarkers: collectCandidateMarkers(bundle),
   };
@@ -89,6 +93,31 @@ function normalizeReview(review: GitHubReview): NormalizedReview {
     submittedAt: review.submitted_at ?? null,
     url: review.html_url ?? null,
   };
+}
+
+function normalizeReviewThread(thread: GitHubReviewThread): NormalizedReviewThread {
+  return {
+    id: thread.id,
+    isResolved: Boolean(thread.isResolved),
+    isOutdated: Boolean(thread.isOutdated),
+    path: thread.path ?? null,
+    line: thread.line ?? null,
+    startLine: thread.startLine ?? null,
+    commentIds: thread.comments
+      .map((comment) => normalizeDatabaseId(comment.fullDatabaseId))
+      .filter((id): id is number => id !== null),
+  };
+}
+
+function normalizeDatabaseId(value: number | string | null | undefined): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+  const number = Number(value);
+  return Number.isSafeInteger(number) ? number : null;
 }
 
 function collectCandidateMarkers(bundle: RawPullRequestBundle): CandidateAgentMarker[] {

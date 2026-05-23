@@ -164,5 +164,11 @@ function validateImportedRecords(records: NormalizedPullRequestRecord[]): void {
         );
       }
     }
+
+    if (!Array.isArray(record.reviewThreads)) {
+      throw new Error(
+        `Unsupported normalized PR record schema in .traceback/records/pr-${record.prNumber}.json. Run \`traceback import --prs <number>\` again before extracting failures.`,
+      );
+    }
   }
 }

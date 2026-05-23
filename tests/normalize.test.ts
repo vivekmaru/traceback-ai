@@ -54,6 +54,28 @@ const rawBundle: RawPullRequestBundle = {
       html_url: "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r2001",
     },
   ],
+  reviewThreads: [
+    {
+      id: "PRRT_kwDOABC123",
+      isResolved: true,
+      isOutdated: false,
+      path: "src/auth.ts",
+      line: 42,
+      startLine: 39,
+      comments: [
+        {
+          id: "PRRC_kwDOABC2001",
+          fullDatabaseId: 2001,
+          url: "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r2001",
+        },
+        {
+          id: "PRRC_kwDOABC2002",
+          fullDatabaseId: "2002",
+          url: "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r2002",
+        },
+      ],
+    },
+  ],
   reviews: [
     {
       id: 3001,
@@ -116,6 +138,23 @@ describe("normalizePullRequestRecord", () => {
       author: "copilot-pull-request-reviewer[bot]",
       state: "COMMENTED",
     });
+  });
+
+  test("normalizes review thread metadata into v3 records", () => {
+    const record = normalizePullRequestRecord(rawBundle);
+
+    expect(record.schemaVersion).toBe(3);
+    expect(record.reviewThreads).toEqual([
+      {
+        id: "PRRT_kwDOABC123",
+        isResolved: true,
+        isOutdated: false,
+        path: "src/auth.ts",
+        line: 42,
+        startLine: 39,
+        commentIds: [2001, 2002],
+      },
+    ]);
   });
 
   test("extracts candidate AI and agent markers without classifying failures", () => {

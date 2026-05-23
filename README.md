@@ -15,8 +15,8 @@ semantics, see [docs/artifacts.md](docs/artifacts.md).
 
 - Bun 1.2+
 - A git repository with an `origin` remote pointing at GitHub
-- Optional: `GITHUB_TOKEN` or `GH_TOKEN` for private repositories or higher API
-  rate limits
+- Optional: `GITHUB_TOKEN` or `GH_TOKEN` for private repositories, higher API
+  rate limits, and GitHub review-thread status metadata
 
 ## Setup
 
@@ -94,7 +94,10 @@ For each PR, Traceback AI stores:
 
 Imported data includes PR metadata, issue comments, review comments, reviews,
 basic diff/file stats, and simple candidate AI/agent markers found in bodies,
-comments, reviews, and authors.
+comments, reviews, and authors. When `GITHUB_TOKEN` or `GH_TOKEN` is available,
+Traceback also imports GitHub review-thread metadata from GraphQL, including
+resolved/outdated state and review comment IDs. Without a token, import keeps
+working and records `reviewThreads: []`.
 
 For private repositories, export a GitHub token before importing. Traceback AI
 reads either `GITHUB_TOKEN` or `GH_TOKEN`, so you can use whichever environment
@@ -166,9 +169,16 @@ query state drops, and render-time side effects.
 
 The extraction is intentionally heuristic. It assigns candidate categories,
 rough severity when priority badges or priority words are present, confidence,
-status hints from nearby replies, and detected AI/agent markers. Re-running
-`traceback extract` refreshes `.traceback/records/failures/` instead of appending
-duplicates.
+status hints from same-thread replies and imported review-thread state, and
+detected AI/agent markers. Candidate statuses can include `candidate`,
+`resolved`, `accepted`, `rejected`, `contested`, `superseded`, and `unknown`.
+`superseded` means GitHub marked the review thread outdated without stronger
+reply or resolution evidence. Re-running `traceback extract` refreshes
+`.traceback/records/failures/` instead of appending duplicates.
+
+Records imported before review-thread support use an older normalized schema.
+If extraction asks you to re-import, run `traceback import --prs <number>` again
+before `traceback extract`.
 
 ### `traceback analyze --dry-run`
 
@@ -452,6 +462,7 @@ traceback ui --host 127.0.0.1 --port 4321
 The UI reads `.traceback/` and shows:
 
 - pipeline summary counts
+- candidate status distribution
 - selectable analysis runs and missing-stage guidance
 - deterministic failure candidates
 - selected-run AI clusters when provider output exists
@@ -505,6 +516,9 @@ bun run build
 
 - GitHub API access is read-only and best-effort.
 - Large repositories may hit unauthenticated rate limits without a token.
+- GitHub review-thread metadata requires `GITHUB_TOKEN` or `GH_TOKEN`; without a
+  token, statuses can still use REST review-comment replies but not
+  resolved/outdated thread state.
 - The importer fetches recent PRs by GitHub's updated ordering.
 - Candidate AI/agent markers are heuristics, not classification.
 - Failure candidates are deterministic signals, not final AI classification.
@@ -517,9 +531,8 @@ bun run build
 
 ## Next Steps
 
-- Improve thread-aware outcome/status detection after the first local UI slice.
+- Validate the new thread-aware statuses on one richer external repository.
+- Tune taxonomy/category mapping from real dogfood runs.
 - Add editable rule review only after the read-only UI proves useful.
 - Add a guarded apply workflow only after proposed artifacts prove useful in
   manual review.
-- Improve accepted, rejected, contested, and resolved status detection from
-  review threads.

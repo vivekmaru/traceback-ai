@@ -42,6 +42,9 @@ describe("loadUiState", () => {
       expect(state.summary).toEqual({
         importedPrs: 1,
         failureCandidates: 1,
+        statusCounts: {
+          candidate: 1,
+        },
         analysisRuns: 1,
         reviewDecisions: 0,
         draftRules: 0,
@@ -49,6 +52,7 @@ describe("loadUiState", () => {
         exports: 0,
       });
       expect(state.candidates).toHaveLength(1);
+      expect(state.candidates[0].status).toBe("candidate");
       expect(state.runs[0]).toMatchObject({
         runId,
         mode: "dry-run",
@@ -179,6 +183,9 @@ describe("loadUiState", () => {
       const state = await loadUiState(repoRoot, new Date("2026-05-22T13:15:00.000Z"));
 
       expect(state.summary).toMatchObject({
+        statusCounts: {
+          resolved: 1,
+        },
         reviewDecisions: 2,
         draftRules: 1,
         ruleDecisions: 1,
@@ -214,6 +221,34 @@ describe("loadUiState", () => {
       });
       expect(state.exportItems).toHaveLength(1);
       expect(state.exportItems[0]).toBe(exportItem);
+      expect(state.warnings).not.toContain(
+        "All extracted candidates are still marked `candidate`; thread-aware outcome detection is a known quality gap.",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("surfaces status distribution including superseded candidates", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-ui-"));
+
+    try {
+      await writeJson(path.join(repoRoot, ".traceback", "records", "pr-11.json"), record(11));
+      await writeJson(
+        path.join(repoRoot, ".traceback", "records", "failures", "failure-pr-11-review_comment-1.json"),
+        { ...candidate("failure-pr-11-review_comment-1"), status: "candidate" },
+      );
+      await writeJson(
+        path.join(repoRoot, ".traceback", "records", "failures", "failure-pr-11-review_comment-2.json"),
+        { ...candidate("failure-pr-11-review_comment-2"), status: "superseded" },
+      );
+
+      const state = await loadUiState(repoRoot, new Date("2026-05-22T15:00:00.000Z"));
+
+      expect(state.summary.statusCounts).toEqual({
+        candidate: 1,
+        superseded: 1,
+      });
       expect(state.warnings).not.toContain(
         "All extracted candidates are still marked `candidate`; thread-aware outcome detection is a known quality gap.",
       );
@@ -288,7 +323,7 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 
 function record(prNumber: number): NormalizedPullRequestRecord {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     importedAt: "2026-05-22T12:58:00.000Z",
     repository: {
       owner: "vivekmaru",
@@ -315,6 +350,7 @@ function record(prNumber: number): NormalizedPullRequestRecord {
     deletions: 0,
     issueComments: [],
     reviewComments: [],
+    reviewThreads: [],
     reviews: [],
     candidateAgentMarkers: [],
   };

@@ -5,7 +5,7 @@ import type { AnalysisOutput } from "./analyze";
 import type { ReviewDecision, ReviewDecisionsFile } from "./review";
 import type { DraftRule, DraftRulesFile } from "./rules";
 import type { RuleDecision, RuleDecisionsFile } from "./rules-review";
-import type { FailureCandidate, NormalizedPullRequestRecord } from "./types";
+import type { FailureCandidate, FailureCandidateStatus, NormalizedPullRequestRecord } from "./types";
 
 export type UiServerOptions = {
   host: string;
@@ -30,6 +30,7 @@ export type UiState = {
 export type UiSummary = {
   importedPrs: number;
   failureCandidates: number;
+  statusCounts: Partial<Record<FailureCandidateStatus, number>>;
   analysisRuns: number;
   reviewDecisions: number;
   draftRules: number;
@@ -396,12 +397,23 @@ function buildSummary({
   return {
     importedPrs: records.length,
     failureCandidates: candidates.length,
+    statusCounts: countCandidateStatuses(candidates),
     analysisRuns: runs.length,
     reviewDecisions: sum(runs, (run) => run.reviewDecisions),
     draftRules: sum(runs, (run) => run.draftRules),
     ruleDecisions: sum(runs, (run) => run.ruleDecisions),
     exports: runs.filter((run) => run.exportedRules > 0 || run.hasProposedAgents).length,
   };
+}
+
+function countCandidateStatuses(
+  candidates: FailureCandidate[],
+): Partial<Record<FailureCandidateStatus, number>> {
+  const counts: Partial<Record<FailureCandidateStatus, number>> = {};
+  for (const candidate of candidates) {
+    counts[candidate.status] = (counts[candidate.status] ?? 0) + 1;
+  }
+  return counts;
 }
 
 function buildWarnings({
@@ -820,7 +832,7 @@ function renderHtml(): string {
       renderWarnings(data.warnings);
       renderSelectedRun(data);
       renderRuns(data.runs);
-      renderCandidates(data.candidates);
+      renderCandidates(data.candidates, data.summary.statusCounts);
       const selectedRun = getSelectedRun();
       renderClusters(selectedRun);
       renderReviewDecisions(selectedRun);
@@ -923,9 +935,9 @@ function renderHtml(): string {
       });
     }
 
-    function renderCandidates(candidates) {
+    function renderCandidates(candidates, statusCounts) {
       const container = document.getElementById("candidates");
-      container.innerHTML = "<h2>Failure candidates</h2><p class='intro'>These are deterministic inputs extracted from imported PR evidence. They are candidates, not final confirmed failures.</p>" + (candidates.length ? \`
+      container.innerHTML = "<h2>Failure candidates</h2><p class='intro'>These are deterministic inputs extracted from imported PR evidence. They are candidates, not final confirmed failures.</p>" + renderStatusDistribution(statusCounts) + (candidates.length ? \`
         <div class="list">
           \${candidates.map((candidate) => \`
             <article class="card candidate">
@@ -940,7 +952,7 @@ function renderHtml(): string {
               \${field("Source", candidate.sourceType)}
               <div>
                 <span class="label">Status</span><br>
-                \${statusPill(candidate.status, candidate.status === "candidate" ? "warn" : "good")}
+                \${statusPill(candidate.status, statusTone(candidate.status))}
               </div>
             </article>
           \`).join("")}
@@ -1121,12 +1133,35 @@ function renderHtml(): string {
       \`;
     }
 
+    function renderStatusDistribution(statusCounts) {
+      const entries = Object.entries(statusCounts || {});
+      if (!entries.length) {
+        return "";
+      }
+      return \`
+        <article class="card row">
+          <h3>Status distribution</h3>
+          <p>Thread-aware status detection uses same-thread replies and GitHub review-thread state. Superseded means the source thread is outdated without stronger outcome evidence.</p>
+          <div class="tabs">
+            \${entries.map(([status, count]) => statusPill(status + ": " + count, statusTone(status))).join("")}
+          </div>
+        </article>
+      \`;
+    }
+
     function legendItem(label, description) {
       return \`<span class="legend-item"><strong>\${escapeHtml(label)}</strong><span>\${escapeHtml(description)}</span></span>\`;
     }
 
     function statusPill(label, tone) {
       return \`<span class="pill \${tone}">\${escapeHtml(label)}</span>\`;
+    }
+
+    function statusTone(status) {
+      if (status === "resolved" || status === "accepted") return "good";
+      if (status === "rejected") return "bad";
+      if (status === "candidate" || status === "contested") return "warn";
+      return "";
     }
 
     function link(href, label) {

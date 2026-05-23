@@ -4,10 +4,13 @@ import type {
   GitHubRepository,
   GitHubReview,
   GitHubReviewComment,
+  GitHubReviewThread,
+  GitHubReviewThreadComment,
   RawPullRequestBundle,
 } from "./types";
 
 const API_ROOT = "https://api.github.com";
+const GRAPHQL_ROOT = "https://api.github.com/graphql";
 
 export type ImportOptions = {
   prs: number;
@@ -42,7 +45,7 @@ export async function importRecentPullRequests(
 
   for (const item of list.slice(0, prs)) {
     const number = item.number;
-    const [pullRequest, issueComments, reviewComments, reviews] = await Promise.all([
+    const [pullRequest, issueComments, reviewComments, reviewThreads, reviews] = await Promise.all([
       requestJson<GitHubPullRequest>(
         `/repos/${options.repository.owner}/${options.repository.repo}/pulls/${number}`,
         context,
@@ -55,6 +58,7 @@ export async function importRecentPullRequests(
         `/repos/${options.repository.owner}/${options.repository.repo}/pulls/${number}/comments?per_page=100`,
         context,
       ),
+      fetchReviewThreads(options.repository, number, context),
       requestAllPages<GitHubReview>(
         `/repos/${options.repository.owner}/${options.repository.repo}/pulls/${number}/reviews?per_page=100`,
         context,
@@ -67,6 +71,7 @@ export async function importRecentPullRequests(
       pullRequest,
       issueComments,
       reviewComments,
+      reviewThreads,
       reviews,
     });
   }
@@ -76,6 +81,46 @@ export async function importRecentPullRequests(
 
 type RequestContext = {
   fetcher: HttpFetcher;
+};
+
+type GraphQlPageInfo = {
+  hasNextPage: boolean;
+  endCursor: string | null;
+};
+
+type GraphQlReviewThreadNode = {
+  id: string;
+  isResolved: boolean;
+  isOutdated: boolean;
+  path: string | null;
+  line: number | null;
+  startLine: number | null;
+  comments: {
+    nodes: GitHubReviewThreadComment[];
+    pageInfo: GraphQlPageInfo;
+  };
+};
+
+type GraphQlReviewThreadPage = {
+  nodes: GraphQlReviewThreadNode[];
+  pageInfo: GraphQlPageInfo;
+};
+
+type ReviewThreadsResponse = {
+  repository: {
+    pullRequest: {
+      reviewThreads: GraphQlReviewThreadPage;
+    } | null;
+  } | null;
+};
+
+type ReviewThreadCommentsResponse = {
+  node: {
+    comments?: {
+      nodes: GitHubReviewThreadComment[];
+      pageInfo: GraphQlPageInfo;
+    };
+  } | null;
 };
 
 async function fetchPullRequestList(
@@ -122,13 +167,126 @@ async function requestJson<T>(path: string, context: RequestContext): Promise<T>
   return (await response.json()) as T;
 }
 
+async function fetchReviewThreads(
+  repository: GitHubRepository,
+  pullRequestNumber: number,
+  context: RequestContext,
+): Promise<GitHubReviewThread[]> {
+  if (!githubToken()) {
+    return [];
+  }
+
+  const threads: GitHubReviewThread[] = [];
+  let threadsCursor: string | null = null;
+
+  do {
+    const data: ReviewThreadsResponse = await requestGraphQl<ReviewThreadsResponse>(
+      REVIEW_THREADS_QUERY,
+      {
+        owner: repository.owner,
+        repo: repository.repo,
+        number: pullRequestNumber,
+        threadsCursor,
+      },
+      context,
+    );
+    const page: GraphQlReviewThreadPage | undefined = data.repository?.pullRequest?.reviewThreads;
+    if (!page) {
+      return threads;
+    }
+
+    for (const node of page.nodes) {
+      const comments = [...node.comments.nodes];
+      if (node.comments.pageInfo.hasNextPage && node.comments.pageInfo.endCursor) {
+        comments.push(
+          ...(await fetchAdditionalReviewThreadComments(
+            node.id,
+            node.comments.pageInfo.endCursor,
+            context,
+          )),
+        );
+      }
+      threads.push({
+        id: node.id,
+        isResolved: Boolean(node.isResolved),
+        isOutdated: Boolean(node.isOutdated),
+        path: node.path ?? null,
+        line: node.line ?? null,
+        startLine: node.startLine ?? null,
+        comments,
+      });
+    }
+
+    threadsCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (threadsCursor);
+
+  return threads;
+}
+
+async function fetchAdditionalReviewThreadComments(
+  threadId: string,
+  firstCursor: string | null,
+  context: RequestContext,
+): Promise<GitHubReviewThreadComment[]> {
+  const comments: GitHubReviewThreadComment[] = [];
+  let commentsCursor: string | null = firstCursor;
+
+  do {
+    const data = await requestGraphQl<ReviewThreadCommentsResponse>(
+      REVIEW_THREAD_COMMENTS_QUERY,
+      { threadId, commentsCursor },
+      context,
+    );
+    const page = data.node?.comments;
+    if (!page) {
+      return comments;
+    }
+    comments.push(...page.nodes);
+    commentsCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (commentsCursor);
+
+  return comments;
+}
+
+async function requestGraphQl<T>(
+  query: string,
+  variables: Record<string, unknown>,
+  context: RequestContext,
+): Promise<T> {
+  const token = githubToken();
+  if (!token) {
+    throw new Error("GitHub GraphQL requests require GITHUB_TOKEN or GH_TOKEN.");
+  }
+  const response = await context.fetcher(GRAPHQL_ROOT, {
+    method: "POST",
+    headers: {
+      accept: "application/vnd.github+json",
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      "user-agent": "traceback-cli",
+      "x-github-api-version": "2022-11-28",
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  if (!response.ok) {
+    throw new GitHubApiError(await formatGitHubError(response), response.status, GRAPHQL_ROOT);
+  }
+
+  const body = (await response.json()) as { data?: T; errors?: Array<{ message?: string }> };
+  if (body.errors?.length) {
+    const message = body.errors.map((error) => error.message ?? "Unknown GraphQL error").join("; ");
+    throw new GitHubApiError(`GitHub GraphQL request failed. ${message}`, response.status, GRAPHQL_ROOT);
+  }
+  return body.data as T;
+}
+
 async function request(url: string, context: RequestContext): Promise<Response> {
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
     "user-agent": "traceback-cli",
     "x-github-api-version": "2022-11-28",
   };
-  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+  const token = githubToken();
   if (token) {
     headers.authorization = `Bearer ${token}`;
   }
@@ -139,6 +297,10 @@ async function request(url: string, context: RequestContext): Promise<Response> 
   }
 
   return response;
+}
+
+function githubToken(): string | undefined {
+  return process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
 }
 
 function toApiUrl(path: string): string {
@@ -189,3 +351,62 @@ async function formatGitHubError(response: Response): Promise<string> {
 
   return `GitHub API request failed with ${response.status}.${detail}`;
 }
+
+const REVIEW_THREADS_QUERY = /* GraphQL */ `
+  query TracebackReviewThreads(
+    $owner: String!
+    $repo: String!
+    $number: Int!
+    $threadsCursor: String
+  ) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $number) {
+        reviewThreads(first: 100, after: $threadsCursor) {
+          nodes {
+            id
+            isResolved
+            isOutdated
+            path
+            line
+            startLine
+            comments(first: 100) {
+              nodes {
+                id
+                fullDatabaseId
+                url
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;
+
+const REVIEW_THREAD_COMMENTS_QUERY = /* GraphQL */ `
+  query TracebackReviewThreadComments($threadId: ID!, $commentsCursor: String) {
+    node(id: $threadId) {
+      ... on PullRequestReviewThread {
+        comments(first: 100, after: $commentsCursor) {
+          nodes {
+            id
+            fullDatabaseId
+            url
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;

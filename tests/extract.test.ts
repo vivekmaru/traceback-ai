@@ -9,7 +9,7 @@ import {
 import type { NormalizedPullRequestRecord } from "../src/types";
 
 const baseRecord: NormalizedPullRequestRecord = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   importedAt: "2026-05-17T00:00:00.000Z",
   repository: {
     owner: "vivekmaru",
@@ -57,6 +57,17 @@ const baseRecord: NormalizedPullRequestRecord = {
       originalLine: 39,
       inReplyToId: null,
       commitId: "abc123",
+    },
+  ],
+  reviewThreads: [
+    {
+      id: "PRRT_kwDOABC2001",
+      isResolved: false,
+      isOutdated: false,
+      path: "src/auth.ts",
+      line: 42,
+      startLine: 39,
+      commentIds: [2001],
     },
   ],
   reviews: [],
@@ -317,6 +328,70 @@ describe("extractFailureCandidates", () => {
     expect(candidate.status).toBe("resolved");
   });
 
+  test("infers resolved status from resolved GitHub review threads without replies", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewThreads: [
+        {
+          ...baseRecord.reviewThreads[0],
+          isResolved: true,
+          commentIds: [2001],
+        },
+      ],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.status).toBe("resolved");
+  });
+
+  test("infers superseded status from outdated GitHub review threads without stronger signals", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewThreads: [
+        {
+          ...baseRecord.reviewThreads[0],
+          isOutdated: true,
+          commentIds: [2001],
+        },
+      ],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.status).toBe("superseded");
+  });
+
+  test("lets explicit same-thread replies override outdated review-thread state", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewComments: [
+        baseRecord.reviewComments[0],
+        {
+          ...baseRecord.reviewComments[0],
+          id: 2002,
+          body: "I disagree, this is not an issue.",
+          inReplyToId: 2001,
+        },
+      ],
+      reviewThreads: [
+        {
+          ...baseRecord.reviewThreads[0],
+          isOutdated: true,
+          commentIds: [2001, 2002],
+        },
+      ],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate.status).toBe("rejected");
+  });
+
   test("does not extract review comment replies as standalone candidates", () => {
     const record = {
       ...baseRecord,
@@ -489,6 +564,7 @@ describe("deterministic extraction helpers", () => {
     expect(detectStatus("I think this is unsafe. Thoughts?", [])).toBe("contested");
     expect(detectStatus("This is unsafe", ["I disagree, this is not an issue."])).toBe("rejected");
     expect(detectStatus("This is unsafe", ["Good catch, addressed in abc123."])).toBe("resolved");
+    expect(detectStatus("This is unsafe", ["This is valid."])).toBe("accepted");
     expect(detectStatus("This is unsafe", ["Not fixed yet."])).toBe("candidate");
     expect(detectStatus("This is unsafe", ["This is not resolved."])).toBe("candidate");
     expect(detectStatus("This is unsafe", ["Not fixed yet.", "Fixed in abc123."])).toBe(
@@ -497,6 +573,15 @@ describe("deterministic extraction helpers", () => {
     expect(detectStatus("This is unsafe", ["This isn't valid."])).toBe("rejected");
     expect(detectStatus("This is unsafe", ["Not done yet."])).toBe("candidate");
     expect(detectStatus("This is unsafe", ["Fixed as intended."])).toBe("resolved");
+    expect(detectStatus("This is unsafe", [], { isResolved: true, isOutdated: false })).toBe(
+      "resolved",
+    );
+    expect(detectStatus("This is unsafe", [], { isResolved: false, isOutdated: true })).toBe(
+      "superseded",
+    );
+    expect(detectStatus("This is unsafe", ["Not fixed yet."], { isResolved: true, isOutdated: false })).toBe(
+      "candidate",
+    );
   });
 
   test("maps representative keyword categories", () => {
