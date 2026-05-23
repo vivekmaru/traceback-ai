@@ -681,6 +681,7 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Manual decision dialog crashes when focus is lost")).not.toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Human-editable form resets while editing")).toBe("user_input_loss");
     expect(detectCategory("Parser coercion accepts malformed values during decode")).toBe(
       "parser_permissiveness",
     );
@@ -690,6 +691,12 @@ describe("deterministic extraction helpers", () => {
       ),
     ).toBe("identifier_collision_record_loss");
     expect(detectCategory("CSS selector collisions break layout rendering")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Filename suffixing bug drops uploaded files")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Enriched records table omits cluster title")).not.toBe(
       "identifier_collision_record_loss",
     );
     expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
@@ -711,6 +718,13 @@ describe("deterministic extraction helpers", () => {
       ),
     ).toBe("pagination_boundary_error");
     expect(detectCategory("UI pagination resets current page after refetch")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("per_page docs fail to render")).not.toBe("pagination_boundary_error");
+    expect(detectCategory("Quota allows more than 100 users")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Requested PR list UI drops selection")).not.toBe(
       "pagination_boundary_error",
     );
     expect(detectCategory("Redirect drops query state when page=2 is preserved")).toBe(
