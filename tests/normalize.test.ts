@@ -73,6 +73,11 @@ const rawBundle: RawPullRequestBundle = {
           fullDatabaseId: "2002",
           url: "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r2002",
         },
+        {
+          id: "PRRC_kwDOABC9007199254740993",
+          fullDatabaseId: "9007199254740993",
+          url: "https://github.com/vivekmaru/EventSnaps/pull/91#discussion_r9007199254740993",
+        },
       ],
     },
   ],
@@ -152,7 +157,7 @@ describe("normalizePullRequestRecord", () => {
         path: "src/auth.ts",
         line: 42,
         startLine: 39,
-        commentIds: [2001, 2002],
+        commentIds: ["2001", "2002", "9007199254740993"],
       },
     ]);
   });

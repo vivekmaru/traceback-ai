@@ -261,6 +261,9 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
   const ruleDecisionItems = (ruleDecisions?.decisions ?? []).map((decision) =>
     toUiRuleDecision(runId, decision),
   );
+  const responsePath = manifest?.files?.response
+    ? path.join(runDir, manifest.files.response)
+    : null;
 
   return {
     runId,
@@ -270,7 +273,7 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
     failureCandidateCount: manifest?.source?.failureCandidateCount ?? 0,
     hasInput: await fileExists(path.join(runDir, manifest?.files?.input ?? "input.json")),
     hasPrompt: await fileExists(path.join(runDir, manifest?.files?.prompt ?? "prompt.md")),
-    hasProviderOutput: Boolean(manifest?.files?.response || analysis),
+    hasProviderOutput: responsePath !== null && (await fileExists(responsePath)),
     enrichedRecords: analysis?.enrichedRecords.length ?? 0,
     clusters: analysis?.clusters.length ?? 0,
     reviewDecisions: reviews?.decisions.length ?? 0,

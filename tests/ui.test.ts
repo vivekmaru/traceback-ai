@@ -96,6 +96,10 @@ describe("loadUiState", () => {
           summary: "analysis-summary.md",
         },
       });
+      await writeFile(
+        path.join(repoRoot, ".traceback", "analysis", "runs", runId, "response.json"),
+        "{}\n",
+      );
       await writeJson(path.join(repoRoot, ".traceback", "analysis", "runs", runId, "enriched-records.json"), [
         {
           id: "enriched-1",
@@ -252,6 +256,45 @@ describe("loadUiState", () => {
       expect(state.warnings).not.toContain(
         "All extracted candidates are still marked `candidate`; thread-aware outcome detection is a known quality gap.",
       );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("does not mark provider output present when the response artifact is missing", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-ui-"));
+    const runId = "2026-05-22T13-20-00Z";
+
+    try {
+      await writeJson(path.join(repoRoot, ".traceback", "records", "pr-12.json"), record(12));
+      await writeJson(path.join(repoRoot, ".traceback", "analysis", "runs", runId, "manifest.json"), {
+        runId,
+        mode: "provider",
+        provider: "openai",
+        createdAt: "2026-05-22T13:20:00.000Z",
+        source: {
+          failureCandidateCount: 0,
+        },
+        files: {
+          input: "input.json",
+          prompt: "prompt.md",
+          response: "response.json",
+          enrichedRecords: "enriched-records.json",
+          clusters: "clusters.json",
+          summary: "analysis-summary.md",
+        },
+      });
+      await writeJson(path.join(repoRoot, ".traceback", "analysis", "runs", runId, "enriched-records.json"), []);
+      await writeJson(path.join(repoRoot, ".traceback", "analysis", "runs", runId, "clusters.json"), []);
+
+      const state = await loadUiState(repoRoot, new Date("2026-05-22T13:25:00.000Z"));
+
+      expect(state.runs[0]).toMatchObject({
+        runId,
+        hasProviderOutput: false,
+        enrichedRecords: 0,
+        clusters: 0,
+      });
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

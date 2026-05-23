@@ -105,19 +105,18 @@ function normalizeReviewThread(thread: GitHubReviewThread): NormalizedReviewThre
     startLine: thread.startLine ?? null,
     commentIds: thread.comments
       .map((comment) => normalizeDatabaseId(comment.fullDatabaseId))
-      .filter((id): id is number => id !== null),
+      .filter((id): id is string => id !== null),
   };
 }
 
-function normalizeDatabaseId(value: number | string | null | undefined): number | null {
+function normalizeDatabaseId(value: number | string | null | undefined): string | null {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
+    return Number.isFinite(value) ? String(value) : null;
   }
   if (typeof value !== "string" || value.trim().length === 0) {
     return null;
   }
-  const number = Number(value);
-  return Number.isSafeInteger(number) ? number : null;
+  return value.trim();
 }
 
 function collectCandidateMarkers(bundle: RawPullRequestBundle): CandidateAgentMarker[] {

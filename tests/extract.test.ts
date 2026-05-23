@@ -67,7 +67,7 @@ const baseRecord: NormalizedPullRequestRecord = {
       path: "src/auth.ts",
       line: 42,
       startLine: 39,
-      commentIds: [2001],
+      commentIds: ["2001"],
     },
   ],
   reviews: [],
@@ -336,7 +336,7 @@ describe("extractFailureCandidates", () => {
         {
           ...baseRecord.reviewThreads[0],
           isResolved: true,
-          commentIds: [2001],
+          commentIds: ["2001"],
         },
       ],
     };
@@ -354,7 +354,7 @@ describe("extractFailureCandidates", () => {
         {
           ...baseRecord.reviewThreads[0],
           isOutdated: true,
-          commentIds: [2001],
+          commentIds: ["2001"],
         },
       ],
     };
@@ -381,7 +381,7 @@ describe("extractFailureCandidates", () => {
         {
           ...baseRecord.reviewThreads[0],
           isOutdated: true,
-          commentIds: [2001, 2002],
+          commentIds: ["2001", "2002"],
         },
       ],
       reviews: [],

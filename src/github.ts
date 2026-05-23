@@ -176,12 +176,13 @@ async function fetchReviewThreads(
     return [];
   }
 
-  try {
-    const threads: GitHubReviewThread[] = [];
-    let threadsCursor: string | null = null;
+  const threads: GitHubReviewThread[] = [];
+  let threadsCursor: string | null = null;
 
-    do {
-      const data: ReviewThreadsResponse = await requestGraphQl<ReviewThreadsResponse>(
+  do {
+    let data: ReviewThreadsResponse;
+    try {
+      data = await requestGraphQl<ReviewThreadsResponse>(
         REVIEW_THREADS_QUERY,
         {
           owner: repository.owner,
@@ -191,40 +192,41 @@ async function fetchReviewThreads(
         },
         context,
       );
-      const page: GraphQlReviewThreadPage | undefined = data.repository?.pullRequest?.reviewThreads;
-      if (!page) {
-        return threads;
+    } catch {
+      return threads;
+    }
+
+    const page: GraphQlReviewThreadPage | undefined = data.repository?.pullRequest?.reviewThreads;
+    if (!page) {
+      return threads;
+    }
+
+    for (const node of page.nodes) {
+      const comments = [...node.comments.nodes];
+      if (node.comments.pageInfo.hasNextPage && node.comments.pageInfo.endCursor) {
+        comments.push(
+          ...(await fetchAdditionalReviewThreadComments(
+            node.id,
+            node.comments.pageInfo.endCursor,
+            context,
+          )),
+        );
       }
+      threads.push({
+        id: node.id,
+        isResolved: Boolean(node.isResolved),
+        isOutdated: Boolean(node.isOutdated),
+        path: node.path ?? null,
+        line: node.line ?? null,
+        startLine: node.startLine ?? null,
+        comments,
+      });
+    }
 
-      for (const node of page.nodes) {
-        const comments = [...node.comments.nodes];
-        if (node.comments.pageInfo.hasNextPage && node.comments.pageInfo.endCursor) {
-          comments.push(
-            ...(await fetchAdditionalReviewThreadComments(
-              node.id,
-              node.comments.pageInfo.endCursor,
-              context,
-            )),
-          );
-        }
-        threads.push({
-          id: node.id,
-          isResolved: Boolean(node.isResolved),
-          isOutdated: Boolean(node.isOutdated),
-          path: node.path ?? null,
-          line: node.line ?? null,
-          startLine: node.startLine ?? null,
-          comments,
-        });
-      }
+    threadsCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (threadsCursor);
 
-      threadsCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
-    } while (threadsCursor);
-
-    return threads;
-  } catch {
-    return [];
-  }
+  return threads;
 }
 
 async function fetchAdditionalReviewThreadComments(
@@ -235,19 +237,23 @@ async function fetchAdditionalReviewThreadComments(
   const comments: GitHubReviewThreadComment[] = [];
   let commentsCursor: string | null = firstCursor;
 
-  do {
-    const data = await requestGraphQl<ReviewThreadCommentsResponse>(
-      REVIEW_THREAD_COMMENTS_QUERY,
-      { threadId, commentsCursor },
-      context,
-    );
-    const page = data.node?.comments;
-    if (!page) {
-      return comments;
-    }
-    comments.push(...page.nodes);
-    commentsCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
-  } while (commentsCursor);
+  try {
+    do {
+      const data = await requestGraphQl<ReviewThreadCommentsResponse>(
+        REVIEW_THREAD_COMMENTS_QUERY,
+        { threadId, commentsCursor },
+        context,
+      );
+      const page = data.node?.comments;
+      if (!page) {
+        return comments;
+      }
+      comments.push(...page.nodes);
+      commentsCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+    } while (commentsCursor);
+  } catch {
+    return comments;
+  }
 
   return comments;
 }

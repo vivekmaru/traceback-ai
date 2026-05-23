@@ -384,6 +384,82 @@ describe("importRecentPullRequests", () => {
     expect(bundle.reviewThreads).toEqual([]);
   });
 
+  test("preserves already fetched review threads when later GraphQL pages fail", async () => {
+    process.env.GITHUB_TOKEN = "test-token";
+    const fetcher = async (input: string, init?: RequestInit) => {
+      const url = input.toString();
+
+      if (url === "https://api.github.com/graphql") {
+        const body = JSON.parse(String(init?.body));
+        if (body.variables.threadsCursor === "thread-page-2") {
+          return Response.json({ message: "Gateway timeout" }, { status: 502 });
+        }
+        return Response.json({
+          data: {
+            repository: {
+              pullRequest: {
+                reviewThreads: {
+                  nodes: [
+                    {
+                      id: "PRRT_kwDOABC123",
+                      isResolved: true,
+                      isOutdated: false,
+                      path: "src/auth.ts",
+                      line: 42,
+                      startLine: 40,
+                      comments: {
+                        nodes: [{ id: "PRRC_kwDOABC2001", fullDatabaseId: 2001 }],
+                        pageInfo: { hasNextPage: false, endCursor: null },
+                      },
+                    },
+                  ],
+                  pageInfo: { hasNextPage: true, endCursor: "thread-page-2" },
+                },
+              },
+            },
+          },
+        });
+      }
+
+      if (url.includes("/pulls?")) {
+        return Response.json([pr(16)]);
+      }
+      if (url.includes("/pulls/16/comments") || url.includes("/pulls/16/reviews")) {
+        return Response.json([]);
+      }
+      if (url.includes("/issues/16/comments")) {
+        return Response.json([]);
+      }
+      if (url.includes("/pulls/16")) {
+        return Response.json(pr(16));
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    const [bundle] = await importRecentPullRequests({
+      prs: 1,
+      repository: {
+        owner: "acme",
+        repo: "widgets",
+        remoteUrl: "https://github.com/acme/widgets.git",
+      },
+      fetcher,
+    });
+
+    expect(bundle.reviewThreads).toEqual([
+      {
+        id: "PRRT_kwDOABC123",
+        isResolved: true,
+        isOutdated: false,
+        path: "src/auth.ts",
+        line: 42,
+        startLine: 40,
+        comments: [{ id: "PRRC_kwDOABC2001", fullDatabaseId: 2001 }],
+      },
+    ]);
+  });
+
   test("404 errors mention private repository token access", async () => {
     const fetcher = async () =>
       Response.json({ message: "Not Found" }, { status: 404, statusText: "Not Found" });

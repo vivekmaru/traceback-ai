@@ -120,7 +120,7 @@ export type NormalizedReviewThread = {
   path: string | null;
   line: number | null;
   startLine: number | null;
-  commentIds: number[];
+  commentIds: string[];
 };
 
 export type CandidateAgentMarker = {

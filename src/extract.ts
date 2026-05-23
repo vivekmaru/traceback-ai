@@ -426,7 +426,9 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
       .map((reply) => reply.body)
       .filter(Boolean);
     const reviewThread =
-      source.sourceType === "review_comment" ? reviewThreadByCommentId.get(source.id) ?? null : null;
+      source.sourceType === "review_comment"
+        ? reviewThreadByCommentId.get(String(source.id)) ?? null
+        : null;
 
     candidates.push({
       schemaVersion: 1,
@@ -454,8 +456,8 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
 
 function buildReviewThreadCommentMap(
   reviewThreads: NormalizedReviewThread[],
-): Map<number, NormalizedReviewThread> {
-  const threadByCommentId = new Map<number, NormalizedReviewThread>();
+): Map<string, NormalizedReviewThread> {
+  const threadByCommentId = new Map<string, NormalizedReviewThread>();
   for (const thread of reviewThreads) {
     for (const commentId of thread.commentIds) {
       threadByCommentId.set(commentId, thread);
