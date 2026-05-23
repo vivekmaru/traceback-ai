@@ -15,7 +15,8 @@ Tiny local read-only review UI.
 Status: first UI slice implemented; provider-rich dogfood artifacts now
 available; export output now emits instruction-ready `Traceback Learnings`;
 thread-aware outcome/status detection implemented for GitHub review replies,
-resolved review threads, and outdated review threads.
+resolved review threads, and outdated review threads; first taxonomy tuning pass
+implemented from the refreshed dogfood run.
 
 ## Why This Is Next
 
@@ -167,7 +168,6 @@ Current behavior:
 
 Remaining quality work:
 
-- Tune noisy category mapping from real dogfood runs.
 - Improve candidate review UI filters/search/status evidence.
 - Add evidence quality scoring after status/category quality is trustworthy.
 - Validate on an external repository after the local loop feels sharper and less
@@ -267,6 +267,20 @@ Verified on 2026-05-23:
   stable, but the new run more clearly labels the PR-body candidates from PRs
   #5, #7, and #8 as low-confidence informational records. The exported
   `Traceback Learnings` are clearer but substantively similar.
+- Taxonomy/category tuning added explicit categories for human-editable
+  artifact validation, identifier collision/record loss, status inference
+  errors, and pagination boundary errors.
+- Feature-summary PR bodies such as Traceback's own `## Summary` sections are
+  no longer extracted as failure candidates unless they include explicit failure
+  language.
+- Local dogfood extraction after the taxonomy pass generated 28 review-comment
+  candidates, 0 PR-body candidates, and 0 `unknown` categories from the current
+  imported Traceback records.
+- `bun test` passed with 110 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
+- `./dist/cli.js ui --help` passed.
 
 Environment note:
 
@@ -276,10 +290,10 @@ Environment note:
 
 ## Next Suggested Step
 
-Build the taxonomy/category tuning slice from the refreshed dogfood candidates.
-Start with the three remaining `candidate` PR-body records and the `unknown`
-review-comment categories, then add regression tests before changing extraction
-patterns.
+Build candidate review UI polish: filters, search, sorting, and status/evidence
+visibility for the candidate list. Keep it read-only and local-only; the goal is
+to make the tuned candidate set easier to inspect before evidence scoring or
+external repo validation.
 
 ## Update Rules
 

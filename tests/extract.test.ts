@@ -178,6 +178,26 @@ describe("extractFailureCandidates", () => {
     expect(extractFailureCandidates([record])).toEqual([]);
   });
 
+  test("does not extract Traceback feature-summary PR bodies as failures", () => {
+    const featureSummaries = [
+      "Summary add traceback analyze --dry-run and traceback analyze --provider openai write compact analysis run artifacts under .traceback/analysis/runs/<runId>/ add OpenAI provider isolation, explicit privacy warning, missing-key preservation, strict output validation, and collision-safe run IDs document analysis behavior",
+      "## Summary\n\n- Add traceback rules export --run --target agents-md for controlled export of accepted draft rules.\n- Write proposed artifacts under .traceback/exports/<runId>/ without modifying root instruction files.\n- Document safety boundaries and add tests for success, missing drafts, unsupported targets, root AGENTS.md preservation.",
+      "## Summary\n\n- Add traceback rules review --run --policy conservative for deterministic local rule decisions.\n- Add optional --from normalization for human-edited rule-decision files.\n- Add controlled rules export --target agents-md behavior that prefers rule decisions when present, uses edited fields, excludes rejected and needs_edit.",
+    ];
+
+    for (const body of featureSummaries) {
+      const record = {
+        ...baseRecord,
+        body,
+        issueComments: [],
+        reviewComments: [],
+        reviews: [],
+      };
+
+      expect(extractFailureCandidates([record])).toEqual([]);
+    }
+  });
+
   test("maps predictable Math.random identifiers to insecure randomness", () => {
     const record = recordWithReviewComment(
       "Math.random() creates predictable random identifiers for uploaded files in offline queues; use cryptographically secure randomness.",
@@ -597,6 +617,26 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Template text is overwritten after React Query refetch while editing")).toBe(
       "user_input_loss",
     );
+    expect(
+      detectCategory(
+        "Reject invalid manual decision values instead of coercing human-edited rule-decisions.json input.",
+      ),
+    ).toBe("human_editable_artifact_validation");
+    expect(
+      detectCategory(
+        "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
+      ),
+    ).toBe("identifier_collision_record_loss");
+    expect(
+      detectCategory(
+        "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",
+      ),
+    ).toBe("status_inference_error");
+    expect(
+      detectCategory(
+        "Support importing more than 100 requested PRs with fixed per_page pagination instead of one truncated pulls page request.",
+      ),
+    ).toBe("pagination_boundary_error");
   });
 });
 

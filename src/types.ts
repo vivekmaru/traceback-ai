@@ -153,6 +153,10 @@ export type FailureCandidateCategory =
   | "parser_permissiveness"
   | "overbroad_change"
   | "context_omission"
+  | "human_editable_artifact_validation"
+  | "identifier_collision_record_loss"
+  | "status_inference_error"
+  | "pagination_boundary_error"
   | "unknown";
 
 export type FailureCandidateSeverity = "low" | "medium" | "high";

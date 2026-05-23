@@ -128,7 +128,8 @@ Milestones:
    resolved threads, and outdated threads.
 2. Refresh downstream dogfood artifacts from the improved candidate/status set.
    Implemented for the Traceback dogfood run after thread-aware statuses.
-3. Taxonomy/category tuning from real Traceback runs.
+3. Taxonomy/category tuning from real Traceback runs. Implemented for the first
+   Traceback dogfood pass.
 4. Candidate review UI polish: filters, search, sorting, and status evidence.
 5. Evidence quality scoring.
 6. Redaction checks for shareable/exportable artifacts.

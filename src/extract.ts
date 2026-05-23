@@ -78,9 +78,27 @@ const PR_BODY_STRONG_SIGNAL_PATTERNS: RegExp[] = [
   /\bsecret\b/i,
   /\btoken\b/i,
   /\btiming attack\b/i,
-  /\baccepted\b/i,
-  /\brejected\b/i,
-  /\bfix(?:es|ed)?\b/i,
+];
+
+const PR_BODY_FEATURE_SUMMARY_PATTERNS: RegExp[] = [
+  /^\s*#*\s*summary\b[\s\S]{0,600}\b(?:add|adds|added|implement|implemented|write|writes|document|documents|test|tests|export|exports|analyze|rules|provider|artifacts)\b/i,
+];
+
+const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
+  /\broot cause\b/i,
+  /\bvulnerability\b/i,
+  /\bsecurity\b/i,
+  /\bregression\b/i,
+  /\bincident\b/i,
+  /\bbug\b/i,
+  /\bfailure\b/i,
+  /\bcrash\b/i,
+  /\bbroken\b/i,
+  /\bleak\b/i,
+  /\bunsafe\b/i,
+  /\btampered\b/i,
+  /\battack\b/i,
+  /\btiming attack\b/i,
 ];
 
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [
@@ -106,6 +124,66 @@ const CATEGORY_PATTERNS: Array<{
   category: FailureCandidateCategory;
   patterns: RegExp[];
 }> = [
+  {
+    category: "human_editable_artifact_validation",
+    patterns: [
+      /\brule-decisions?(?:\.json)?\b/i,
+      /\bdraft-rules?(?:\.json)?\b/i,
+      /\brunId\b/i,
+      /\bmanual decision\b/i,
+      /\bhuman-edited\b/i,
+      /\bhuman-editable\b/i,
+      /\bedited(?:Title|Instruction|Rationale| fields?)\b/i,
+      /\bunknown rule IDs?\b/i,
+      /\binvalid manual decision\b/i,
+      /\bcoerc(?:e|ing|ion)\b/i,
+      /\baccepted\/edited\b/i,
+    ],
+  },
+  {
+    category: "identifier_collision_record_loss",
+    patterns: [
+      /\bduplicate (?:rule|decision|record|cluster|candidate|source)? ?IDs?\b/i,
+      /\bcollisions?\b/i,
+      /\boverwrites?\b/i,
+      /\bdrops?\b.{0,80}\brecords?\b/i,
+      /\brecords?\b.{0,80}\bdrops?\b/i,
+      /\benriched records?\b/i,
+      /\bsourceCandidateIds?\b/i,
+      /\bcandidate IDs?\b.{0,80}\breused\b/i,
+      /\breused\b.{0,80}\bcandidate IDs?\b/i,
+      /\bmapRecordsByCandidateId\b/i,
+      /\bsuffixing\b/i,
+    ],
+  },
+  {
+    category: "status_inference_error",
+    patterns: [
+      /\bstatus inference\b/i,
+      /\bdetectStatus\b/i,
+      /\bacceptance heuristic\b/i,
+      /\bnegated\b/i,
+      /\bnot fixed yet\b/i,
+      /\binReplyTo\b/i,
+      /\bthread\b.{0,80}\b(?:reply|context|status)\b/i,
+      /\breplies\b.{0,80}\b(?:aggregate|whole PR|status)\b/i,
+      /\bwhole PR\b.{0,80}\b(?:comments?|replies|context)\b/i,
+    ],
+  },
+  {
+    category: "pagination_boundary_error",
+    patterns: [
+      /\bper_page\b/i,
+      /\bpage size\b/i,
+      /\bpaginat(?:e|ed|ion)\b/i,
+      /\bpage=\d+\b/i,
+      /\brequested PRs?\b/i,
+      /\babove 100\b/i,
+      /\bmore than 100\b/i,
+      /\bsingle \/pulls page request\b/i,
+      /\bsilently truncated\b/i,
+    ],
+  },
   {
     category: "insecure_randomness",
     patterns: [
@@ -515,6 +593,10 @@ function isCandidateFinding(source: SourceItem): boolean {
   const matchesStandaloneFinding = matchesAny(source.body, STANDALONE_FINDING_PATTERNS);
   const matchesFailureCue = matchesAny(source.body, FAILURE_CUE_PATTERNS);
 
+  if (source.sourceType === "pr_body" && isFeatureSummaryPrBody(source.body)) {
+    return false;
+  }
+
   if (
     source.sourceType === "pr_body" &&
     !matchesStandaloneFinding &&
@@ -525,6 +607,13 @@ function isCandidateFinding(source: SourceItem): boolean {
   }
 
   return matchesStandaloneFinding || matchesFailureCue;
+}
+
+function isFeatureSummaryPrBody(body: string): boolean {
+  return (
+    matchesAny(body, PR_BODY_FEATURE_SUMMARY_PATTERNS) &&
+    !matchesAny(body, PR_BODY_EXPLICIT_FAILURE_PATTERNS)
+  );
 }
 
 function detectConfidence(
