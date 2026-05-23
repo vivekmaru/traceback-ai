@@ -126,9 +126,13 @@ Milestones:
 
 1. Thread-aware outcome/status detection. Implemented for GitHub review replies,
    resolved threads, and outdated threads.
-2. Taxonomy/category tuning from real runs.
-3. Evidence quality scoring.
-4. Redaction checks for shareable/exportable artifacts.
+2. Refresh downstream dogfood artifacts from the improved candidate/status set.
+   Implemented for the Traceback dogfood run after thread-aware statuses.
+3. Taxonomy/category tuning from real Traceback runs.
+4. Candidate review UI polish: filters, search, sorting, and status evidence.
+5. Evidence quality scoring.
+6. Redaction checks for shareable/exportable artifacts.
+7. External repo validation, after the local loop feels sharper and less noisy.
 
 Outcome/status detection should distinguish:
 
@@ -145,8 +149,7 @@ Exit criteria:
 - Candidates are not all left as `candidate` when review replies and GitHub
   review-thread state provide stronger signal.
 - Reports and UI views make uncertainty explicit.
-- Status detection works on at least Traceback's own PRs and one richer external
-  repo.
+- Status detection works well on Traceback's own PRs before external validation.
 
 ## Phase 4: Return To Local Session Capture
 
