@@ -1,6 +1,6 @@
 # Traceback Execution State
 
-Last updated: 2026-05-23
+Last updated: 2026-05-24
 
 Read this file first in future sessions. It is the living operational tracker for
 what to build next, what is out of scope, and what must be updated after work is
@@ -12,11 +12,10 @@ For broader product direction, read `docs/roadmap.md`.
 
 Tiny local read-only review UI.
 
-Status: first UI slice implemented; provider-rich dogfood artifacts now
-available; export output now emits instruction-ready `Traceback Learnings`;
-thread-aware outcome/status detection implemented for GitHub review replies,
-resolved review threads, and outdated review threads; first taxonomy tuning pass
-implemented from the refreshed dogfood run.
+Status: first UI slice implemented; provider-rich dogfood artifacts available;
+thread-aware outcome/status detection implemented; taxonomy tuning pass from PR
+#11 completed; rule/export artifacts now separate repo-specific agent guidance
+from broader engineering and process learnings.
 
 ## Why This Is Next
 
@@ -192,7 +191,7 @@ analysis, review, rules, and export pipeline.
 
 ## Last Verified State
 
-Verified on 2026-05-23:
+Verified through 2026-05-24:
 
 - `bun test` passed with 97 tests.
 - `bun run check` passed.
@@ -330,12 +329,36 @@ Verified on 2026-05-23:
   semantics while matching normal disambiguation word forms, preserved malformed
   parser summaries that do not say "fails", and removed UI page-size truncation
   from import-boundary pagination scoring.
+- PR #11 was merged to `main` and used as a high-signal dogfood source for rule
+  export scope separation.
+- Draft rules now include `learningScope`: `repo_specific`,
+  `general_engineering`, or `process_or_workflow`.
+- `AGENTS.proposed.md` now receives only repo-specific rules. Broader
+  engineering and workflow lessons are preserved in
+  `.traceback/exports/<runId>/broader-learnings.md`.
+- Export manifests now keep `exportedRuleCount` as the total exported learning
+  count and record `repoSpecificRuleCount`, `broaderLearningCount`, and
+  `learningScopeCounts`.
+- UI state and the local Rules & exports tab can surface broader-learning
+  export text when present.
+- Refreshed dogfood import with `GITHUB_TOKEN="$(gh auth token)" ./dist/cli.js
+  import --prs 11` imported 11 PRs with review-thread metadata.
+- Fresh `./dist/cli.js extract` generated 70 failure candidates after PR #11
+  entered the dogfood set.
+- Fresh dry-run analysis wrote `.traceback/analysis/runs/2026-05-24T02-07-27Z/`.
+- Existing reviewed provider run `2026-05-23T12-02-59Z` was regenerated through
+  `rules`, `rules review`, and `rules export` with learning scopes. That export
+  wrote both `AGENTS.proposed.md` and `broader-learnings.md`, exported 5 total
+  learnings, classified 2 as repo-specific AGENTS rules, and preserved 3 broader
+  engineering learnings.
+- `OPENAI_API_KEY` was not present in the shell for this slice, so no fresh
+  provider analysis was run after importing PR #11.
 
 Environment note:
 
 - `OPENAI_API_KEY` is not stored in repo files or `.traceback/` artifacts.
-- The user provided a temporary key for the refreshed provider run and plans to
-  rotate it after use.
+- If a fresh provider run is needed, pass a key through the shell environment
+  for that command only and do not persist it in repo files.
 
 ## Next Suggested Step
 

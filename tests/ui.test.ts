@@ -173,6 +173,8 @@ describe("loadUiState", () => {
         sourceDraftRulesMarkdownPath: "draft-rules.md",
         outputs: ["AGENTS.proposed.md"],
         exportedRuleCount: 1,
+        repoSpecificRuleCount: 1,
+        broaderLearningCount: 1,
         warnings: [],
       });
       await writeFile(
@@ -180,8 +182,12 @@ describe("loadUiState", () => {
         "## Traceback Learnings\n\nWhen editing Traceback:\n\n- Preserve provenance.\n",
       );
       await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "broader-learnings.md"),
+        "# Traceback Broader Learnings\n\n## General Engineering\n\n- Add negative fixtures.\n",
+      );
+      await writeFile(
         path.join(repoRoot, ".traceback", "exports", runId, "export-summary.md"),
-        "# Traceback Rule Export Summary\n\n- Rules exported: 1\n",
+        "# Traceback Rule Export Summary\n\n- Repo-specific rules exported: 1\n- Broader learnings preserved: 1\n",
       );
 
       const state = await loadUiState(repoRoot, new Date("2026-05-22T13:15:00.000Z"));
@@ -219,9 +225,15 @@ describe("loadUiState", () => {
         target: "agents-md",
         createdAt: "2026-05-22T13:14:00.000Z",
         exportedRuleCount: 1,
+        repoSpecificRuleCount: 1,
+        broaderLearningCount: 1,
         hasProposedAgents: true,
+        hasBroaderLearnings: true,
         proposedAgentsText: "## Traceback Learnings\n\nWhen editing Traceback:\n\n- Preserve provenance.\n",
-        summaryText: "# Traceback Rule Export Summary\n\n- Rules exported: 1\n",
+        broaderLearningsText:
+          "# Traceback Broader Learnings\n\n## General Engineering\n\n- Add negative fixtures.\n",
+        summaryText:
+          "# Traceback Rule Export Summary\n\n- Repo-specific rules exported: 1\n- Broader learnings preserved: 1\n",
       });
       expect(state.exportItems).toHaveLength(1);
       expect(state.exportItems[0]).toBe(exportItem);
@@ -353,6 +365,69 @@ describe("loadUiState", () => {
       });
       expect(state.runs[0].warnings).toEqual(["No exportable rules were found."]);
       expect(state.exportItems).toHaveLength(1);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("counts broader-only export artifacts as exports", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-ui-"));
+    const runId = "2026-05-22T14-30-00Z";
+
+    try {
+      await writeJson(path.join(repoRoot, ".traceback", "records", "pr-12.json"), record(12));
+      await writeJson(path.join(repoRoot, ".traceback", "analysis", "runs", runId, "manifest.json"), {
+        runId,
+        mode: "provider",
+        provider: "openai",
+        createdAt: "2026-05-22T14:30:00.000Z",
+        source: {
+          failureCandidateCount: 0,
+        },
+        files: {
+          input: "input.json",
+          prompt: "prompt.md",
+          response: "response.json",
+          enrichedRecords: "enriched-records.json",
+          clusters: "clusters.json",
+          summary: "analysis-summary.md",
+        },
+      });
+      await writeJson(path.join(repoRoot, ".traceback", "exports", runId, "manifest.json"), {
+        schemaVersion: 1,
+        runId,
+        target: "agents-md",
+        createdAt: "2026-05-22T14:35:00.000Z",
+        sourceDraftRulesPath: "draft-rules.json",
+        sourceDraftRulesMarkdownPath: "draft-rules.md",
+        outputs: ["broader-learnings.md", "export-summary.md", "manifest.json"],
+        exportedRuleCount: 2,
+        repoSpecificRuleCount: 0,
+        broaderLearningCount: 2,
+        warnings: [],
+      });
+      await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "broader-learnings.md"),
+        "# Traceback Broader Learnings\n\n## General Engineering\n\n- Keep useful engineering lessons.\n",
+      );
+      await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "export-summary.md"),
+        "# Traceback Rule Export Summary\n\n- Rules exported: 2\n",
+      );
+
+      const state = await loadUiState(repoRoot, new Date("2026-05-22T14:40:00.000Z"));
+
+      expect(state.summary.exports).toBe(1);
+      expect(state.runs[0]).toMatchObject({
+        exportedRules: 2,
+        hasProposedAgents: false,
+      });
+      expect(state.runs[0].exportItem).toMatchObject({
+        exportedRuleCount: 2,
+        repoSpecificRuleCount: 0,
+        broaderLearningCount: 2,
+        hasBroaderLearnings: true,
+      });
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

@@ -226,7 +226,10 @@ async function runRulesExportCommand(options: { run?: string; target?: string })
   if (result.proposedPath) {
     console.log(`Wrote proposed ${options.target} export to ${result.proposedPath}`);
   } else {
-    console.log("No exportable rules were found; AGENTS.proposed.md was not written.");
+    console.log("No repo-specific rules were exported; AGENTS.proposed.md was not written.");
+  }
+  if (result.broaderLearningsPath) {
+    console.log(`Wrote broader learnings to ${result.broaderLearningsPath}`);
   }
   console.log(`Wrote export summary to ${result.summaryPath}`);
   console.log(`Wrote export manifest to ${result.manifestPath}`);

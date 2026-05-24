@@ -419,16 +419,23 @@ Then writes a controlled, human-reviewable export under:
 
 The only supported export target is currently `agents-md`.
 
-If rule decisions are present, export includes only decisions marked `accepted`
-or `edited`; `rejected` and `needs_edit` rules are excluded. For edited rules,
-`editedTitle`, `editedInstruction`, and `editedRationale` are used when present.
-If rule decisions do not exist, export falls back to the existing draft-rule
-behavior and exports accepted draft rules directly.
+If rule decisions are present, export considers only decisions marked
+`accepted` or `edited`; `rejected` and `needs_edit` rules are excluded. For
+edited rules, `editedTitle`, `editedInstruction`, and `editedRationale` are used
+when present. If rule decisions do not exist, export falls back to the existing
+draft-rule behavior and exports accepted draft rules directly.
 
 `AGENTS.proposed.md` is clean proposed instruction text for repo-level agent
 guidance. It is intentionally paste-or-review-ready: source PRs, candidate IDs,
 confidence labels, and review-decision metadata stay in `manifest.json`,
 `export-summary.md`, and `.traceback/rules/<runId>/`.
+
+Traceback also separates broader lessons from repo-specific guidance. Draft
+rules carry a `learningScope` of `repo_specific`, `general_engineering`, or
+`process_or_workflow`. Only `repo_specific` rules are emitted to
+`AGENTS.proposed.md`; broader engineering and workflow lessons are preserved in
+`broader-learnings.md` for review without turning them into repo instruction
+text.
 
 If no exportable rules exist, Traceback writes `export-summary.md` and
 `manifest.json` with a clear warning and does not create a misleading

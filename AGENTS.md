@@ -93,6 +93,10 @@ When editing Traceback:
   nearby product nouns.
 - If PR review finds multiple comments in the same heuristic family, pause and
   audit the whole pattern family before pushing another one-comment fix.
+- Separate learning scope before exporting guidance. Repo-specific Traceback
+  instructions belong in `AGENTS.proposed.md`; broader engineering or
+  review-process lessons should be preserved separately instead of being forced
+  into repo instruction text.
 - Keep status inference thread-local and negation-aware. Do not infer candidate
   outcomes from unrelated PR-level context.
 - Keep pagination and platform-specific shell behavior explicit; test page

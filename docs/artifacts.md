@@ -32,6 +32,15 @@ Traceback only turns review decisions with these values into draft rules:
 Other review decisions are recorded in `excludedDecisions` and are not converted
 into draft rules.
 
+Each draft rule includes a `learningScope`:
+
+- `repo_specific`: guidance suitable for a repo instruction file such as
+  `AGENTS.md`.
+- `general_engineering`: a broader code-quality lesson that should be preserved
+  but not automatically converted into repo-specific agent guidance.
+- `process_or_workflow`: an agent/process lesson, such as review-loop behavior,
+  that should be reviewed separately from source-code guidance.
+
 ### `draft-rules.md`
 
 Human-readable summary of `draft-rules.json`.
@@ -105,19 +114,37 @@ candidate IDs, confidence labels, and review-decision metadata. Provenance stays
 in `manifest.json`, `export-summary.md`, and the `.traceback/rules/<runId>/`
 working artifacts.
 
+Only rules with `learningScope: "repo_specific"` are emitted here. Older draft
+rule artifacts without `learningScope` are treated as repo-specific for backward
+compatibility.
+
+### `broader-learnings.md`
+
+Reviewable lessons that are useful but should not be pasted directly into
+repo-level agent guidance.
+
+This file preserves rules with `learningScope: "general_engineering"` and
+`learningScope: "process_or_workflow"`. It exists so high-signal PR comments can
+teach broader engineering or agent-process habits without bloating
+`AGENTS.proposed.md`.
+
 ### `export-summary.md`
 
 Human-readable export result:
 
 - run ID
 - export target
-- exported rule count
+- total exported rule count
+- repo-specific rule count
+- broader learning count
 - output path
+- broader learnings path
 - warnings
 - confirmation that root repo files were not modified
 
-If no rules are exportable, Traceback writes this summary and `manifest.json` but
-does not create `AGENTS.proposed.md`.
+If no repo-specific rules are exportable, Traceback writes this summary and
+`manifest.json` but does not create `AGENTS.proposed.md`. If broader scoped
+rules are present, it still writes `broader-learnings.md`.
 
 ### `manifest.json`
 
@@ -128,7 +155,10 @@ Machine-readable export manifest. It records:
 - source draft rule paths
 - source rule decision path when present
 - output paths
-- exported rule count
+- total exported rule count
+- repo-specific rule count
+- broader learning count
+- learning scope counts
 - warnings
 
 Use this file for provenance and automation.

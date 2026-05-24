@@ -63,6 +63,7 @@ describe("runRulesExport", () => {
       const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
 
       expect(result.exportedRuleCount).toBe(1);
+      expect(result.repoSpecificRuleCount).toBe(1);
       expect(proposed).toContain("## Traceback Learnings");
       expect(proposed).toContain("When editing Traceback:");
       expect(proposed).toContain("- Accepted instruction.");
@@ -73,6 +74,124 @@ describe("runRulesExport", () => {
       expect(proposed).not.toContain("Needs edit instruction.");
       expect(manifest.sourceRuleDecisionsPath).toEndWith(
         ".traceback/rules/2026-05-18T11-35-13Z/rule-decisions.json",
+      );
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("exports repo-specific guidance to AGENTS and broader learnings separately", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          id: "draft-rule-traceback-taxonomy",
+          title: "Traceback taxonomy fixture guard",
+          rule: "When editing Traceback taxonomy heuristics, require contextual tokens and positive/negative fixtures.",
+          learningScope: "repo_specific",
+        }),
+        draftRule({
+          id: "draft-rule-general-heuristics",
+          title: "Fixture-backed classifier tuning",
+          rule: "When tuning extraction heuristics, test standalone and contextual examples before broadening matches.",
+          learningScope: "general_engineering",
+        }),
+        draftRule({
+          id: "draft-rule-pr-loop",
+          title: "Review-loop audit after repeated comments",
+          rule: "After repeated PR review comments in one area, audit the whole matcher family before pushing another patch.",
+          learningScope: "process_or_workflow",
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-traceback-taxonomy",
+          title: "Traceback taxonomy fixture guard",
+          instruction:
+            "When editing Traceback taxonomy heuristics, require contextual tokens and positive/negative fixtures.",
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-general-heuristics",
+          title: "Fixture-backed classifier tuning",
+          instruction:
+            "When tuning extraction heuristics, test standalone and contextual examples before broadening matches.",
+        }),
+        ruleDecision({
+          ruleId: "draft-rule-pr-loop",
+          title: "Review-loop audit after repeated comments",
+          instruction:
+            "After repeated PR review comments in one area, audit the whole matcher family before pushing another patch.",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesExport(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        target: "agents-md",
+        now: new Date("2026-05-18T16:00:00Z"),
+      });
+
+      const proposed = await readFile(path.join(result.exportDir, "AGENTS.proposed.md"), "utf8");
+      const broader = await readFile(path.join(result.exportDir, "broader-learnings.md"), "utf8");
+      const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
+      const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
+
+      expect(result.exportedRuleCount).toBe(3);
+      expect(result.repoSpecificRuleCount).toBe(1);
+      expect(proposed).toContain("When editing Traceback:");
+      expect(proposed).toContain("When editing Traceback taxonomy heuristics");
+      expect(proposed).not.toContain("When tuning extraction heuristics");
+      expect(proposed).not.toContain("After repeated PR review comments");
+      expect(broader).toContain("## General Engineering");
+      expect(broader).toContain("When tuning extraction heuristics");
+      expect(broader).toContain("## Process Or Workflow");
+      expect(broader).toContain("After repeated PR review comments");
+      expect(summary).toContain("- Repo-specific rules exported: 1");
+      expect(summary).toContain("- Broader learnings preserved: 2");
+      expect(manifest.exportedRuleCount).toBe(3);
+      expect(manifest.repoSpecificRuleCount).toBe(1);
+      expect(manifest.broaderLearningCount).toBe(2);
+      expect(manifest.learningScopeCounts).toEqual({
+        repo_specific: 1,
+        general_engineering: 1,
+        process_or_workflow: 1,
+      });
+      expect(manifest.outputs).toContain(path.join(result.exportDir, "broader-learnings.md"));
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects invalid learning scopes before export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          id: "draft-rule-invalid-scope",
+          title: "Invalid scope",
+          rule: "This guidance should not be silently dropped.",
+          learningScope: "repo-specific" as any,
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-invalid-scope",
+          title: "Invalid scope",
+          instruction: "This guidance should not be silently dropped.",
+        }),
+      ],
+    });
+
+    try {
+      await expect(
+        runRulesExport(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          target: "agents-md",
+          now: new Date("2026-05-18T16:00:00Z"),
+        }),
+      ).rejects.toThrow(
+        "Draft rule draft-rule-invalid-scope has invalid learningScope: repo-specific.",
       );
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
@@ -493,6 +612,7 @@ function draftRule(overrides: Partial<DraftRule>): DraftRule {
     status: "draft",
     title: "Template intent and protected-URL state preservation",
     rule: "Persist and restore full navigation intent.",
+    learningScope: "repo_specific",
     sourceDecisionIds: ["review-cluster-template"],
     sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
     sourcePrs: [91],
