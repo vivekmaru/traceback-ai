@@ -22,6 +22,7 @@ export type RulesExportResult = {
   manifestPath: string;
   outputs: string[];
   exportedRuleCount: number;
+  repoSpecificRuleCount: number;
   broaderLearningCount: number;
 };
 
@@ -36,6 +37,7 @@ type RulesExportManifest = {
   sourceRuleDecisionsPath?: string;
   outputs: string[];
   exportedRuleCount: number;
+  repoSpecificRuleCount: number;
   broaderLearningCount: number;
   learningScopeCounts: Record<LearningScope, number>;
   warnings: string[];
@@ -163,7 +165,8 @@ export async function runRulesExport(
       ? { sourceRuleDecisionsPath: ruleDecisionRead.sourceRuleDecisionsPath }
       : {}),
     outputs,
-    exportedRuleCount: repoSpecificRules.length,
+    exportedRuleCount: exportableRules.length,
+    repoSpecificRuleCount: repoSpecificRules.length,
     broaderLearningCount: broaderLearnings.length,
     learningScopeCounts,
     warnings,
@@ -174,7 +177,8 @@ export async function runRulesExport(
     renderExportSummary({
       runId: options.runId,
       target,
-      exportedRuleCount: repoSpecificRules.length,
+      exportedRuleCount: exportableRules.length,
+      repoSpecificRuleCount: repoSpecificRules.length,
       broaderLearningCount: broaderLearnings.length,
       proposedPath: repoSpecificRules.length > 0 ? proposedPath : null,
       broaderLearningsPath: broaderLearnings.length > 0 ? broaderLearningsPath : null,
@@ -191,7 +195,8 @@ export async function runRulesExport(
     summaryPath,
     manifestPath,
     outputs,
-    exportedRuleCount: repoSpecificRules.length,
+    exportedRuleCount: exportableRules.length,
+    repoSpecificRuleCount: repoSpecificRules.length,
     broaderLearningCount: broaderLearnings.length,
   };
 }
@@ -207,6 +212,10 @@ function buildExportableRules({
   ruleDecisionsByRuleId: Map<string, RuleDecision> | null;
   warnings: string[];
 }): ExportableRule[] {
+  const learningScopesByRuleId = new Map(
+    draftRules.map((rule) => [rule.id, normalizeLearningScope(rule)]),
+  );
+
   if (ruleDecisionsByRuleId) {
     return draftRules.flatMap((rule) => {
       const decision = ruleDecisionsByRuleId.get(rule.id);
@@ -250,7 +259,7 @@ function buildExportableRules({
           reviewDecision: decision.decision,
           sourceDecisionIds: rule.sourceDecisionIds,
           notes: decision.notes,
-          learningScope: rule.learningScope ?? "repo_specific",
+          learningScope: learningScopesByRuleId.get(rule.id) ?? "repo_specific",
         },
       ];
     });
@@ -280,9 +289,28 @@ function buildExportableRules({
       reviewDecision: reviewDecisions.join(", ") || "accepted draft rule",
       sourceDecisionIds: rule.sourceDecisionIds,
       notes: rule.notes,
-      learningScope: rule.learningScope ?? "repo_specific",
+      learningScope: learningScopesByRuleId.get(rule.id) ?? "repo_specific",
     };
   });
+}
+
+function normalizeLearningScope(rule: DraftRule): LearningScope {
+  const value = (rule as { learningScope?: unknown }).learningScope;
+  if (value === undefined || value === null) {
+    return "repo_specific";
+  }
+  if (isLearningScope(value)) {
+    return value;
+  }
+  throw new Error(`Draft rule ${rule.id} has invalid learningScope: ${String(value)}.`);
+}
+
+function isLearningScope(value: unknown): value is LearningScope {
+  return (
+    value === "repo_specific" ||
+    value === "general_engineering" ||
+    value === "process_or_workflow"
+  );
 }
 
 function sourceReviewDecisions(
@@ -451,6 +479,7 @@ function renderExportSummary({
   runId,
   target,
   exportedRuleCount,
+  repoSpecificRuleCount,
   broaderLearningCount,
   proposedPath,
   broaderLearningsPath,
@@ -459,6 +488,7 @@ function renderExportSummary({
   runId: string;
   target: RulesExportTarget;
   exportedRuleCount: number;
+  repoSpecificRuleCount: number;
   broaderLearningCount: number;
   proposedPath: string | null;
   broaderLearningsPath: string | null;
@@ -469,7 +499,8 @@ function renderExportSummary({
     "",
     `- Run ID: ${runId}`,
     `- Target: ${target}`,
-    `- Repo-specific rules exported: ${exportedRuleCount}`,
+    `- Rules exported: ${exportedRuleCount}`,
+    `- Repo-specific rules exported: ${repoSpecificRuleCount}`,
     `- Broader learnings preserved: ${broaderLearningCount}`,
     `- Output path: ${proposedPath ?? "No AGENTS.proposed.md written."}`,
     `- Broader learnings path: ${broaderLearningsPath ?? "No broader-learnings.md written."}`,

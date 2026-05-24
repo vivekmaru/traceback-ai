@@ -336,7 +336,9 @@ Verified through 2026-05-24:
 - `AGENTS.proposed.md` now receives only repo-specific rules. Broader
   engineering and workflow lessons are preserved in
   `.traceback/exports/<runId>/broader-learnings.md`.
-- Export manifests now record `broaderLearningCount` and `learningScopeCounts`.
+- Export manifests now keep `exportedRuleCount` as the total exported learning
+  count and record `repoSpecificRuleCount`, `broaderLearningCount`, and
+  `learningScopeCounts`.
 - UI state and the local Rules & exports tab can surface broader-learning
   export text when present.
 - Refreshed dogfood import with `GITHUB_TOKEN="$(gh auth token)" ./dist/cli.js
@@ -346,8 +348,9 @@ Verified through 2026-05-24:
 - Fresh dry-run analysis wrote `.traceback/analysis/runs/2026-05-24T02-07-27Z/`.
 - Existing reviewed provider run `2026-05-23T12-02-59Z` was regenerated through
   `rules`, `rules review`, and `rules export` with learning scopes. That export
-  wrote `broader-learnings.md`, exported 0 repo-specific AGENTS rules, and
-  preserved 5 broader engineering learnings.
+  wrote both `AGENTS.proposed.md` and `broader-learnings.md`, exported 5 total
+  learnings, classified 2 as repo-specific AGENTS rules, and preserved 3 broader
+  engineering learnings.
 - `OPENAI_API_KEY` was not present in the shell for this slice, so no fresh
   provider analysis was run after importing PR #11.
 

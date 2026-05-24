@@ -121,6 +121,7 @@ export type UiExport = {
   target: string;
   createdAt: string | null;
   exportedRuleCount: number;
+  repoSpecificRuleCount: number;
   broaderLearningCount: number;
   warnings: string[];
   hasProposedAgents: boolean;
@@ -153,6 +154,7 @@ type RulesExportManifest = {
   target?: string;
   createdAt?: string;
   exportedRuleCount?: number;
+  repoSpecificRuleCount?: number;
   broaderLearningCount?: number;
   warnings?: string[];
 };
@@ -312,6 +314,7 @@ async function readExport(
     target: manifest.target ?? "unknown",
     createdAt: manifest.createdAt ?? null,
     exportedRuleCount: manifest.exportedRuleCount ?? 0,
+    repoSpecificRuleCount: manifest.repoSpecificRuleCount ?? manifest.exportedRuleCount ?? 0,
     broaderLearningCount: manifest.broaderLearningCount ?? 0,
     warnings: manifest.warnings ?? [],
     hasProposedAgents: proposedAgentsText !== null,
@@ -1079,6 +1082,7 @@ function renderHtml(): string {
           \${field("Target", exportItem.target)}
           \${field("Created", formatDate(exportItem.createdAt))}
           \${field("Exported rules", exportItem.exportedRuleCount)}
+          \${field("Repo-specific rules", exportItem.repoSpecificRuleCount)}
           \${field("Broader learnings", exportItem.broaderLearningCount)}
           \${field("Warnings", exportItem.warnings.length ? exportItem.warnings.join(" ") : "none")}
           \${exportItem.proposedAgentsText ? \`<pre class="proposal">\${escapeHtml(exportItem.proposedAgentsText)}</pre>\` : "<p>No AGENTS.proposed.md was written for this run.</p>"}

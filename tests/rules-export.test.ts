@@ -63,6 +63,7 @@ describe("runRulesExport", () => {
       const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
 
       expect(result.exportedRuleCount).toBe(1);
+      expect(result.repoSpecificRuleCount).toBe(1);
       expect(proposed).toContain("## Traceback Learnings");
       expect(proposed).toContain("When editing Traceback:");
       expect(proposed).toContain("- Accepted instruction.");
@@ -136,7 +137,8 @@ describe("runRulesExport", () => {
       const summary = await readFile(path.join(result.exportDir, "export-summary.md"), "utf8");
       const manifest = await readJson(path.join(result.exportDir, "manifest.json"));
 
-      expect(result.exportedRuleCount).toBe(1);
+      expect(result.exportedRuleCount).toBe(3);
+      expect(result.repoSpecificRuleCount).toBe(1);
       expect(proposed).toContain("When editing Traceback:");
       expect(proposed).toContain("When editing Traceback taxonomy heuristics");
       expect(proposed).not.toContain("When tuning extraction heuristics");
@@ -147,7 +149,8 @@ describe("runRulesExport", () => {
       expect(broader).toContain("After repeated PR review comments");
       expect(summary).toContain("- Repo-specific rules exported: 1");
       expect(summary).toContain("- Broader learnings preserved: 2");
-      expect(manifest.exportedRuleCount).toBe(1);
+      expect(manifest.exportedRuleCount).toBe(3);
+      expect(manifest.repoSpecificRuleCount).toBe(1);
       expect(manifest.broaderLearningCount).toBe(2);
       expect(manifest.learningScopeCounts).toEqual({
         repo_specific: 1,
@@ -155,6 +158,41 @@ describe("runRulesExport", () => {
         process_or_workflow: 1,
       });
       expect(manifest.outputs).toContain(path.join(result.exportDir, "broader-learnings.md"));
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects invalid learning scopes before export", async () => {
+    const repoRoot = await repoWithDraftRules({
+      runId: "2026-05-18T11-35-13Z",
+      rules: [
+        draftRule({
+          id: "draft-rule-invalid-scope",
+          title: "Invalid scope",
+          rule: "This guidance should not be silently dropped.",
+          learningScope: "repo-specific" as any,
+        }),
+      ],
+      ruleDecisions: [
+        ruleDecision({
+          ruleId: "draft-rule-invalid-scope",
+          title: "Invalid scope",
+          instruction: "This guidance should not be silently dropped.",
+        }),
+      ],
+    });
+
+    try {
+      await expect(
+        runRulesExport(repoRoot, {
+          runId: "2026-05-18T11-35-13Z",
+          target: "agents-md",
+          now: new Date("2026-05-18T16:00:00Z"),
+        }),
+      ).rejects.toThrow(
+        "Draft rule draft-rule-invalid-scope has invalid learningScope: repo-specific.",
+      );
     } finally {
       await rm(repoRoot, { recursive: true, force: true });
     }

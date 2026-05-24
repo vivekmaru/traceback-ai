@@ -135,7 +135,25 @@ function classifyLearningScope(decision: ReviewDecision): LearningScope {
     text.includes(".traceback") ||
     text.includes("traceback taxonomy") ||
     text.includes("traceback run") ||
-    text.includes("traceback artifact")
+    text.includes("traceback artifact") ||
+    text.includes("status inference") ||
+    text.includes("candidate status") ||
+    text.includes("candidate outcomes") ||
+    text.includes("thread-local") ||
+    text.includes("thread replies") ||
+    text.includes("review-thread") ||
+    text.includes("review thread") ||
+    text.includes("normalized record") ||
+    text.includes("imported record") ||
+    text.includes("imported pr record") ||
+    text.includes("import pagination") ||
+    text.includes("import boundary") ||
+    text.includes("page boundary") ||
+    text.includes("per_page") ||
+    text.includes("schema version") ||
+    text.includes("schemaversion") ||
+    text.includes("failure candidate") ||
+    text.includes("sourcecandidateid")
   ) {
     return "repo_specific";
   }

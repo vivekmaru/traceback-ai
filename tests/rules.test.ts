@@ -136,6 +136,19 @@ describe("runRulesDraft", () => {
             "When tuning extraction heuristics, test standalone and contextual examples before broadening matches.",
         }),
         decision({
+          id: "review-cluster-status-inference",
+          decision: "accepted",
+          title: "Status inference and thread-context mishandling",
+          preventionRule:
+            "Derive status from scoped thread replies and keep candidate outcomes thread-local.",
+        }),
+        decision({
+          id: "review-cluster-import-pagination",
+          decision: "accepted",
+          title: "Import pagination and page boundary handling",
+          preventionRule: "Implement fixed per_page pagination loops for imported PR records.",
+        }),
+        decision({
           id: "review-cluster-pr-loop",
           decision: "accepted",
           title: "Review-loop audit after repeated comments",
@@ -157,6 +170,8 @@ describe("runRulesDraft", () => {
       expect(rules.rules.map((rule: any) => [rule.id, rule.learningScope])).toEqual([
         ["draft-rule-review-cluster-traceback-taxonomy", "repo_specific"],
         ["draft-rule-review-cluster-general-heuristics", "general_engineering"],
+        ["draft-rule-review-cluster-status-inference", "repo_specific"],
+        ["draft-rule-review-cluster-import-pagination", "repo_specific"],
         ["draft-rule-review-cluster-pr-loop", "process_or_workflow"],
       ]);
       expect(markdown).toContain("- Learning scope: repo_specific");

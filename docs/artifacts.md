@@ -134,7 +134,8 @@ Human-readable export result:
 
 - run ID
 - export target
-- repo-specific exported rule count
+- total exported rule count
+- repo-specific rule count
 - broader learning count
 - output path
 - broader learnings path
@@ -154,7 +155,8 @@ Machine-readable export manifest. It records:
 - source draft rule paths
 - source rule decision path when present
 - output paths
-- repo-specific exported rule count
+- total exported rule count
+- repo-specific rule count
 - broader learning count
 - learning scope counts
 - warnings
