@@ -320,6 +320,11 @@ Verified on 2026-05-23:
   collisions needs real record-loss semantics, `inReplyTo` needs outcome/status
   inference context, `invalid` near a manual-decision UI no longer scores
   artifact validation, and concise `Parsing fails` summaries remain candidates.
+- PR #11 second post-fix follow-up removed another layer of broad taxonomy
+  leakage: manual-decision and `accepted/edited` artifact matches now need
+  validation semantics, record overwrite/drop/suffixing signals need explicit
+  record-loss or source-candidate context, and UI pagination/per-page/page URL
+  issues no longer score import-boundary pagination failures.
 
 Environment note:
 

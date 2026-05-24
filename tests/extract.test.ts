@@ -686,6 +686,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Manual decision dialog shows invalid tooltip state")).not.toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Manual decision panel opens export modal")).not.toBe(
+      "human_editable_artifact_validation",
+    );
     expect(detectCategory("Status inference uses runId metadata when grouping replies")).toBe(
       "status_inference_error",
     );
@@ -717,6 +720,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Accepted/edited tab crashes when opening settings")).not.toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Accepted/edited tab crashes in rule-decisions UI")).not.toBe(
+      "human_editable_artifact_validation",
+    );
     expect(detectCategory("Validate accepted/edited rule decisions before export")).toBe(
       "human_editable_artifact_validation",
     );
@@ -744,6 +750,15 @@ describe("deterministic extraction helpers", () => {
       "identifier_collision_record_loss",
     );
     expect(detectCategory("CSS collisions in enriched records table break layout")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Overwrites records table columns while dragging")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Records list drops selection when scrolling")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Suffixing IDs in DOM labels breaks accessibility")).not.toBe(
       "identifier_collision_record_loss",
     );
     expect(detectCategory("Filename suffixing bug drops uploaded files")).not.toBe(
@@ -810,10 +825,16 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("per_page request validator rejects invalid value")).not.toBe(
       "pagination_boundary_error",
     );
+    expect(detectCategory("per_page pagination control resets in UI")).not.toBe(
+      "pagination_boundary_error",
+    );
     expect(detectCategory("Pagination request debounce bug in UI")).not.toBe(
       "pagination_boundary_error",
     );
     expect(detectCategory("Pagination bug in PRs table drops selection")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Pagination UI fails when page=2 is preserved in URL")).not.toBe(
       "pagination_boundary_error",
     );
     expect(detectCategory("Quota allows more than 100 users")).not.toBe(

@@ -87,9 +87,10 @@ When editing Traceback:
   validation, collision, record loss, status inference, or import pagination
   boundary terms.
 - Treat broad nouns and plumbing fields such as `security`, `request`, `PRs`,
-  `runId`, `record`, `decision`, `invalid`, `inReplyTo`, and generic `IDs` as
-  suspicious in extraction heuristics. They need domain-specific failure verbs
-  around them, not just nearby product nouns.
+  `runId`, `record`, `decision`, `invalid`, `inReplyTo`, `accepted/edited`,
+  `suffixing`, `page=<n>`, and generic `IDs` as suspicious in extraction
+  heuristics. They need domain-specific failure verbs around them, not just
+  nearby product nouns.
 - If PR review finds multiple comments in the same heuristic family, pause and
   audit the whole pattern family before pushing another one-comment fix.
 - Keep status inference thread-local and negation-aware. Do not infer candidate
