@@ -232,6 +232,10 @@ describe("extractFailureCandidates", () => {
         category: "parser_permissiveness",
       },
       {
+        body: "## Summary\n\n- Add parser guard because malformed input cannot parse.",
+        category: "parser_permissiveness",
+      },
+      {
         body: "## Summary\n\n- Add guard to avoid forwarding auth headers to the analytics proxy.",
         category: "security_privacy_regression",
       },
@@ -698,6 +702,12 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("Validate export runId before accepting manual decisions")).toBe(
       "human_editable_artifact_validation",
     );
+    expect(detectCategory("Validate human-editable export file before normalizing")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Human-editable export file UI crashes")).not.toBe(
+      "human_editable_artifact_validation",
+    );
     expect(detectCategory("Export runId handling docs for the local UI")).not.toBe(
       "human_editable_artifact_validation",
     );
@@ -734,6 +744,12 @@ describe("deterministic extraction helpers", () => {
         "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
       ),
     ).toBe("identifier_collision_record_loss");
+    expect(
+      detectCategory("sourceCandidateIds need disambiguation to avoid mixing records"),
+    ).toBe("identifier_collision_record_loss");
+    expect(detectCategory("Missing sourceCandidateId disambiguation in tooltips")).not.toBe(
+      "identifier_collision_record_loss",
+    );
     expect(detectCategory("Duplicate candidate IDs reset selected filters")).not.toBe(
       "identifier_collision_record_loss",
     );
@@ -835,6 +851,9 @@ describe("deterministic extraction helpers", () => {
       "pagination_boundary_error",
     );
     expect(detectCategory("Pagination UI fails when page=2 is preserved in URL")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Pagination control truncates page size label in UI")).not.toBe(
       "pagination_boundary_error",
     );
     expect(detectCategory("Quota allows more than 100 users")).not.toBe(

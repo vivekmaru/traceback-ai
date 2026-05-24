@@ -325,6 +325,11 @@ Verified on 2026-05-23:
   validation semantics, record overwrite/drop/suffixing signals need explicit
   record-loss or source-candidate context, and UI pagination/per-page/page URL
   issues no longer score import-boundary pagination failures.
+- PR #11 third post-fix follow-up tightened the remaining broad `human-editable`
+  artifact matches, gated sourceCandidateId disambiguation on record-loss/mixing
+  semantics while matching normal disambiguation word forms, preserved malformed
+  parser summaries that do not say "fails", and removed UI page-size truncation
+  from import-boundary pagination scoring.
 
 Environment note:
 
