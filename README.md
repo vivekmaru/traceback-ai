@@ -531,8 +531,10 @@ bun run build
 
 ## Next Steps
 
-- Validate the new thread-aware statuses on one richer external repository.
-- Tune taxonomy/category mapping from real dogfood runs.
+- Improve candidate review UI filters, search, sorting, and status evidence.
+- Add evidence quality scoring after candidate review is easier to inspect.
 - Add editable rule review only after the read-only UI proves useful.
 - Add a guarded apply workflow only after proposed artifacts prove useful in
   manual review.
+- Validate on an external repository after the local loop feels sharper and less
+  noisy.

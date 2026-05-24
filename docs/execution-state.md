@@ -15,7 +15,8 @@ Tiny local read-only review UI.
 Status: first UI slice implemented; provider-rich dogfood artifacts now
 available; export output now emits instruction-ready `Traceback Learnings`;
 thread-aware outcome/status detection implemented for GitHub review replies,
-resolved review threads, and outdated review threads.
+resolved review threads, and outdated review threads; first taxonomy tuning pass
+implemented from the refreshed dogfood run.
 
 ## Why This Is Next
 
@@ -167,7 +168,6 @@ Current behavior:
 
 Remaining quality work:
 
-- Tune noisy category mapping from real dogfood runs.
 - Improve candidate review UI filters/search/status evidence.
 - Add evidence quality scoring after status/category quality is trustworthy.
 - Validate on an external repository after the local loop feels sharper and less
@@ -267,6 +267,69 @@ Verified on 2026-05-23:
   stable, but the new run more clearly labels the PR-body candidates from PRs
   #5, #7, and #8 as low-confidence informational records. The exported
   `Traceback Learnings` are clearer but substantively similar.
+- Taxonomy/category tuning added explicit categories for human-editable
+  artifact validation, identifier collision/record loss, status inference
+  errors, and pagination boundary errors.
+- Feature-summary PR bodies such as Traceback's own `## Summary` sections are
+  no longer extracted as failure candidates unless they include explicit failure
+  language.
+- Local dogfood extraction after the taxonomy pass generated 28 review-comment
+  candidates, 0 PR-body candidates, and 0 `unknown` categories from the current
+  imported Traceback records.
+- `bun test` passed with 111 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
+- `./dist/cli.js ui --help` passed.
+- PR #11 follow-up tightened taxonomy signals that were still too broad:
+  bare `rule-decisions`/`draft-rules` artifact mentions, bare
+  `mapRecordsByCandidateId`, generic review-thread replies UI wording, and
+  requested-PR/table truncation language no longer score the new Traceback
+  categories without the relevant validation, collision, inference, or import
+  boundary context.
+- Regression coverage was added for those four false-positive shapes.
+- `bun test` passed with 111 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- `./dist/cli.js extract` passed and wrote refreshed local failure candidates.
+- `./dist/cli.js ui --help` passed.
+- Follow-up self-audit after PR #11 review churn tightened the remaining broad
+  taxonomy signals found by applying the same learned rule across the pattern
+  family: bare `accepted/edited`, generic `duplicate IDs`, overwrite/existing
+  language, and `preserve sourceCandidateIds` no longer score the new taxonomy
+  categories without artifact-validation or collision/record-loss context.
+- `AGENTS.md` now documents the taxonomy guardrail: new category signals need a
+  positive/negative fixture matrix, artifact/function/field names cannot score
+  alone, and repeated review comments in one heuristic family should trigger a
+  full-family audit before another push.
+- PR #11 follow-up preserved categorized failure-cue PR summaries in the
+  feature-summary suppression gate, so summaries such as parser failures on
+  malformed input are not dropped just because they lack the narrower
+  summary-specific wording.
+- PR #11 follow-up widened feature-summary detection to summary sections after
+  template preambles, removed generic `missing data` from the summary failure
+  allowlist, and required validation/loss semantics for `unknown rule IDs` and
+  duplicate-ID taxonomy matches.
+- PR #11 final review follow-up removed remaining generic-token taxonomy
+  triggers: bare `security` no longer bypasses PR-summary suppression, `runId`
+  needs validation semantics for artifact-validation scoring, duplicate-ID and
+  collision patterns need actual collision/loss semantics, and pagination
+  patterns no longer treat generic `request` as import-boundary evidence.
+- PR #11 post-fix review follow-up tightened the same family again: generic
+  `PRs` no longer makes pagination a boundary/import failure, `records` near
+  collisions needs real record-loss semantics, `inReplyTo` needs outcome/status
+  inference context, `invalid` near a manual-decision UI no longer scores
+  artifact validation, and concise `Parsing fails` summaries remain candidates.
+- PR #11 second post-fix follow-up removed another layer of broad taxonomy
+  leakage: manual-decision and `accepted/edited` artifact matches now need
+  validation semantics, record overwrite/drop/suffixing signals need explicit
+  record-loss or source-candidate context, and UI pagination/per-page/page URL
+  issues no longer score import-boundary pagination failures.
+- PR #11 third post-fix follow-up tightened the remaining broad `human-editable`
+  artifact matches, gated sourceCandidateId disambiguation on record-loss/mixing
+  semantics while matching normal disambiguation word forms, preserved malformed
+  parser summaries that do not say "fails", and removed UI page-size truncation
+  from import-boundary pagination scoring.
 
 Environment note:
 
@@ -276,10 +339,10 @@ Environment note:
 
 ## Next Suggested Step
 
-Build the taxonomy/category tuning slice from the refreshed dogfood candidates.
-Start with the three remaining `candidate` PR-body records and the `unknown`
-review-comment categories, then add regression tests before changing extraction
-patterns.
+Build candidate review UI polish: filters, search, sorting, and status/evidence
+visibility for the candidate list. Keep it read-only and local-only; the goal is
+to make the tuned candidate set easier to inspect before evidence scoring or
+external repo validation.
 
 ## Update Rules
 

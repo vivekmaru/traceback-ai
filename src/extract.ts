@@ -53,7 +53,7 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\boverwrites?\b/i,
   /\boverwritten\b/i,
   /\bsensitive\b/i,
-  /\bforwards?\b.*\bheaders?\b/i,
+  /\bforward(?:s|ed|ing)?\b.*\bheaders?\b/i,
   /\bheaders?\b.*\bforwarded\b/i,
   /\bnever draws?\b/i,
   /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
@@ -63,7 +63,6 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
 const PR_BODY_STRONG_SIGNAL_PATTERNS: RegExp[] = [
   /\broot cause\b/i,
   /\bvulnerability\b/i,
-  /\bsecurity\b/i,
   /\bregression\b/i,
   /\bincident\b/i,
   /\bbug\b/i,
@@ -78,9 +77,39 @@ const PR_BODY_STRONG_SIGNAL_PATTERNS: RegExp[] = [
   /\bsecret\b/i,
   /\btoken\b/i,
   /\btiming attack\b/i,
-  /\baccepted\b/i,
-  /\brejected\b/i,
-  /\bfix(?:es|ed)?\b/i,
+];
+
+const PR_BODY_FEATURE_SUMMARY_PATTERNS: RegExp[] = [
+  /(?:^|\n)\s*#*\s*summary\b[\s\S]{0,600}\b(?:add|adds|added|implement|implemented|write|writes|document|documents|test|tests|export|exports|analyze|rules|provider|artifacts)\b/i,
+];
+
+const PR_BODY_EXPLICIT_FAILURE_PATTERNS: RegExp[] = [
+  /\broot cause\b/i,
+  /\bvulnerability\b/i,
+  /\bregression\b/i,
+  /\bincident\b/i,
+  /\bbug\b/i,
+  /\bfailure\b/i,
+  /\bcrash\b/i,
+  /\bbroken\b/i,
+  /\bleak\b/i,
+  /\bunsafe\b/i,
+  /\btampered\b/i,
+  /\battack\b/i,
+  /\btiming attack\b/i,
+];
+
+const PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS: RegExp[] = [
+  /\b(?:breaks?|fails?|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b.{0,120}\b(?:because|when|while|if|after|before|instead|caus(?:e|es|ing)|users?|data|state|request|upload|redirect|headers?|token|auth|intermittently|by)\b/i,
+  /\b(?:because|when|while|if|after|before|instead|users?|data|state|request|upload|redirect|headers?|token|auth)\b.{0,120}\b(?:breaks?|fails?|drops?|dropped|lost|omits?|omitted|incorrect|unsafe|hardcoded|stale|overwrites?|leaks?)\b/i,
+  /\bfails?\b.{0,80}\b(?:malformed|invalid|parser|parse|parsing|decode|input|error|exception|request|upload|render|redirect|headers?|token|auth|state|data)\b/i,
+  /\b(?:malformed|invalid|parser|parse|parsing|decode|input|error|exception|request|upload|render|redirect|headers?|token|auth|state|data)\b.{0,80}\bfails?\b/i,
+  /\b(?:malformed|invalid|parser|parse|parsing|decode|input)\b.{0,80}\bcannot parse\b/i,
+  /\bcannot parse\b.{0,80}\b(?:malformed|invalid|parser|parse|parsing|decode|input)\b/i,
+  /\bdoes not (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+  /\bdoesn['’]?t (?:render|preserve|include|clear|match|work|return|show|appear)\b/i,
+  /\bthrows?\b.{0,80}\b(?:RangeError|TypeError|error|exception)\b/i,
+  /\bRangeError\b/i,
 ];
 
 const STANDALONE_FINDING_PATTERNS: RegExp[] = [
@@ -106,6 +135,94 @@ const CATEGORY_PATTERNS: Array<{
   category: FailureCandidateCategory;
   patterns: RegExp[];
 }> = [
+  {
+    category: "human_editable_artifact_validation",
+    patterns: [
+      /\b(?:reject|validate|validation|invalid|mismatch|escape|normaliz(?:e|es|ed|ing))\b.{0,80}\b(?:draft-rules?|rule-decisions?|rules?|export|manual decision|runId)\b.{0,80}\brunId\b/i,
+      /\brunId\b.{0,80}\b(?:draft-rules?|rule-decisions?|rules?|export|manual decision)\b.{0,80}\b(?:reject|validate|validation|invalid|mismatch|escape|normaliz(?:e|es|ed|ing))\b/i,
+      /\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b.{0,80}\b(?:rule-decisions?|draft-rules?|export|rules?|runId|human-edited|human-editable).{0,80}\bmanual decision\b/i,
+      /\bmanual decision\b.{0,80}\b(?:rule-decisions?|draft-rules?|export|rules?|runId|human-edited|human-editable).{0,80}\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b/i,
+      /\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b.{0,80}\bhuman-edited\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|runId|manual decision|artifact|file)\b/i,
+      /\b(?:rule-decisions?|draft-rules?|rules?|export|runId|manual decision|artifact|file)\b.{0,80}\bhuman-edited\b.{0,80}\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b/i,
+      /\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b.{0,80}\bhuman-editable\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|runId|manual decision|artifact|file)\b/i,
+      /\b(?:rule-decisions?|draft-rules?|rules?|export|runId|manual decision|artifact|file)\b.{0,80}\bhuman-editable\b.{0,80}\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b/i,
+      /\bedited(?:Title|Instruction|Rationale| fields?)\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact)\b/i,
+      /\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact)\b.{0,80}\bedited(?:Title|Instruction|Rationale| fields?)\b/i,
+      /\bunknown rule IDs?\b.{0,80}\b(?:reject|validate|validation|manual decision|rule-decisions?|artifact|export)\b/i,
+      /\b(?:reject|validate|validation|manual decision|rule-decisions?|artifact|export)\b.{0,80}\bunknown rule IDs?\b/i,
+      /\binvalid manual decision\b/i,
+      /\bmanual decision\b.{0,80}\bcoerc(?:e|ing|ion)\b/i,
+      /\bcoerc(?:e|ing|ion)\b.{0,80}\bmanual decision\b/i,
+      /\baccepted\/edited\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact).{0,80}\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b/i,
+      /\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact).{0,80}\baccepted\/edited\b/i,
+      /\b(?:reject|validate|validation|invalid|mismatch|coerc(?:e|ing|ion)|normaliz(?:e|es|ed|ing))\b.{0,80}\baccepted\/edited\b.{0,80}\b(?:rule-decisions?|draft-rules?|rules?|export|manual decision|artifact)\b/i,
+    ],
+  },
+  {
+    category: "identifier_collision_record_loss",
+    patterns: [
+      /\bduplicate (?:rule|decision|record|cluster|candidate|source) ?IDs?\b.{0,80}\b(?:collision|collide|overwrite|drop|loss|ambiguous|non-unique|reused)\b/i,
+      /\b(?:collision|collide|overwrite|drop|loss|ambiguous|non-unique|reused)\b.{0,80}\bduplicate (?:rule|decision|record|cluster|candidate|source) ?IDs?\b/i,
+      /\bcollisions?\b.{0,80}\bsourceCandidateIds?\b/i,
+      /\bsourceCandidateIds?\b.{0,80}\bcollisions?\b/i,
+      /\boverwrites?\b.{0,80}\b(?:candidate IDs?|sourceCandidateIds?)\b/i,
+      /\b(?:candidate IDs?|sourceCandidateIds?)\b.{0,80}\boverwrites?\b/i,
+      /\bdrops?\b.{0,80}\b(?:duplicate|candidate IDs?|sourceCandidateIds?|record loss)\b.{0,80}\brecords?\b/i,
+      /\brecords?\b.{0,80}\b(?:duplicate|candidate IDs?|sourceCandidateIds?|record loss)\b.{0,80}\bdrops?\b/i,
+      /\benriched records?\b.{0,80}\b(?:duplicate|reused|candidate IDs?|sourceCandidateIds?)\b/i,
+      /\b(?:duplicate|reused|candidate IDs?|sourceCandidateIds?)\b.{0,80}\benriched records?\b/i,
+      /\bsourceCandidateIds?\b.{0,80}\b(?:duplicate|collisions?|overwrites?|drops?|reused|record loss|mix(?:es|ing)? records?|avoid mixing|prevent mixing|disambiguat\w*.{0,40}(?:mix(?:es|ing)? records?|avoid mixing|prevent mixing|record loss))\b/i,
+      /\b(?:duplicate|collisions?|overwrites?|drops?|reused|record loss|mix(?:es|ing)? records?|avoid mixing|prevent mixing|(?:mix(?:es|ing)? records?|avoid mixing|prevent mixing|record loss).{0,40}disambiguat\w*)\b.{0,80}\bsourceCandidateIds?\b/i,
+      /\bcandidate IDs?\b.{0,80}\breused\b/i,
+      /\breused\b.{0,80}\bcandidate IDs?\b/i,
+      /\bmapRecordsByCandidateId\b.{0,80}\b(?:duplicate|collisions?|overwrites?|drops?|reused|record loss|candidate IDs?|sourceCandidateIds?)\b/i,
+      /\b(?:duplicate|collisions?|overwrites?|drops?|reused|record loss|candidate IDs?|sourceCandidateIds?)\b.{0,80}\bmapRecordsByCandidateId\b/i,
+      /\bsuffixing\b.{0,80}\bsourceCandidateIds?\b/i,
+      /\bsourceCandidateIds?\b.{0,80}\bsuffixing\b/i,
+    ],
+  },
+  {
+    category: "status_inference_error",
+    patterns: [
+      /\bstatus inference\b/i,
+      /\bdetectStatus\b/i,
+      /\bacceptance heuristic\b/i,
+      /\bnegated\b.{0,80}\b(?:status|acceptance|resolution|resolved|fixed|reply|replies|thread)\b/i,
+      /\b(?:status|acceptance|resolution|resolved|fixed|reply|replies|thread)\b.{0,80}\bnegated\b/i,
+      /\bnot fixed yet\b.{0,80}\b(?:status|acceptance|resolution|resolved|reply|replies|thread|inference)\b/i,
+      /\b(?:status|acceptance|resolution|resolved|reply|replies|thread|inference)\b.{0,80}\bnot fixed yet\b/i,
+      /\binReplyTo\b.{0,80}\b(?:status|inference|acceptance|resolution|resolved|rejected|contested|outcome)\b/i,
+      /\b(?:status|inference|acceptance|resolution|resolved|rejected|contested|outcome)\b.{0,80}\binReplyTo\b/i,
+      /\b(?:status|inference|acceptance|resolution|resolved|rejected|contested).{0,80}\bthread\b.{0,80}\b(?:reply|replies|status|resolved|outdated)\b/i,
+      /\bthread\b.{0,80}\b(?:reply|replies|status|resolved|outdated).{0,80}\b(?:status|inference|acceptance|resolution|resolved|rejected|contested)\b/i,
+      /\breplies\b.{0,80}\b(?:aggregate|whole PR|status).{0,80}\b(?:status|inference|acceptance|resolution|resolved|rejected|contested)\b/i,
+      /\b(?:status|inference|acceptance|resolution|resolved|rejected|contested)\b.{0,80}\breplies\b.{0,80}\b(?:aggregate|whole PR|status)\b/i,
+      /\bwhole PR\b.{0,80}\b(?:comments?|replies|context).{0,80}\b(?:status|inference|acceptance|resolution|resolved|rejected|contested)\b/i,
+      /\b(?:status|inference|acceptance|resolution|resolved|rejected|contested)\b.{0,80}\bwhole PR\b.{0,80}\b(?:comments?|replies|context)\b/i,
+    ],
+  },
+  {
+    category: "pagination_boundary_error",
+    patterns: [
+      /\bper_page\b.{0,80}\b(?:import|imports|pulls?|PRs?|page size|above 100|more than 100|truncated|boundary)\b/i,
+      /\b(?:import|imports|pulls?|PRs?|page size|above 100|more than 100|truncated|boundary)\b.{0,80}\bper_page\b/i,
+      /\bpage size\b.{0,80}\b(?:import|imports|pulls?|PRs?|per_page|above 100|more than 100|truncated|boundary)\b/i,
+      /\b(?:import|imports|pulls?|PRs?|per_page|above 100|more than 100|truncated|boundary)\b.{0,80}\bpage size\b/i,
+      /\bpaginat(?:e|ed|ion)\b.{0,80}\b(?:import|imports|pulls?|above 100|more than 100)\b/i,
+      /\b(?:import|imports|pulls?|above 100|more than 100)\b.{0,80}\bpaginat(?:e|ed|ion)\b/i,
+      /\bpage=\d+\b.{0,80}\b(?:import|imports|pulls?|PRs?|per_page|truncated|above 100|more than 100)\b/i,
+      /\b(?:import|imports|pulls?|PRs?|per_page|truncated|above 100|more than 100)\b.{0,80}\bpage=\d+\b/i,
+      /\brequested PRs?\b.{0,80}\b(?:import|imports|pulls?|pagination|per_page|page size|above 100|more than 100|boundary)\b/i,
+      /\b(?:import|imports|pulls?|pagination|per_page|page size|above 100|more than 100|boundary)\b.{0,80}\brequested PRs?\b/i,
+      /\babove 100\b.{0,80}\b(?:import|imports|pulls?|PRs?|pagination|per_page|page size|truncated|boundary)\b/i,
+      /\b(?:import|imports|pulls?|PRs?|pagination|per_page|page size|truncated|boundary)\b.{0,80}\babove 100\b/i,
+      /\bmore than 100\b.{0,80}\b(?:import|imports|pulls?|PRs?|pagination|per_page|page size|truncated|boundary)\b/i,
+      /\b(?:import|imports|pulls?|PRs?|pagination|per_page|page size|truncated|boundary)\b.{0,80}\bmore than 100\b/i,
+      /\bsingle \/pulls page request\b/i,
+      /\bsilently truncated\b.{0,80}\b(?:import|imports|pulls?|pagination|per_page|page size|above 100|more than 100|boundary)\b/i,
+      /\b(?:import|imports|pulls?|pagination|per_page|page size|above 100|more than 100|boundary)\b.{0,80}\bsilently truncated\b/i,
+    ],
+  },
   {
     category: "insecure_randomness",
     patterns: [
@@ -185,7 +302,7 @@ const CATEGORY_PATTERNS: Array<{
     patterns: [
       /\bquery\b/i,
       /\bsearch\b/i,
-      /\bredirect\b/i,
+      /\bredirects?\b/i,
       /\bpathname\b/i,
       /\blocation\.state\b/i,
       /\bprotected route\b/i,
@@ -249,6 +366,7 @@ const CATEGORY_PATTERNS: Array<{
       /\bmalformed\b/i,
       /\bcanonical\b/i,
       /\bparser\b/i,
+      /\bparsing\b/i,
       /\bdecode\b/i,
     ],
   },
@@ -515,6 +633,33 @@ function isCandidateFinding(source: SourceItem): boolean {
   const matchesStandaloneFinding = matchesAny(source.body, STANDALONE_FINDING_PATTERNS);
   const matchesFailureCue = matchesAny(source.body, FAILURE_CUE_PATTERNS);
 
+  if (source.sourceType === "pr_body") {
+    if (matchesStandaloneFinding) {
+      return true;
+    }
+
+    const matchesStrongSignal = matchesAny(source.body, PR_BODY_STRONG_SIGNAL_PATTERNS);
+    const matchesFeatureSummaryFailureCue = matchesAny(
+      source.body,
+      PR_BODY_FEATURE_SUMMARY_FAILURE_CUE_PATTERNS,
+    );
+
+    if (
+      isFeatureSummaryPrBody(source.body) &&
+      !matchesStrongSignal &&
+      !matchesFeatureSummaryFailureCue
+    ) {
+      return false;
+    }
+
+    if (
+      isFeatureSummaryPrBody(source.body) &&
+      (matchesStrongSignal || matchesFeatureSummaryFailureCue)
+    ) {
+      return matchesFailureCue || matchesFeatureSummaryFailureCue;
+    }
+  }
+
   if (
     source.sourceType === "pr_body" &&
     !matchesStandaloneFinding &&
@@ -525,6 +670,13 @@ function isCandidateFinding(source: SourceItem): boolean {
   }
 
   return matchesStandaloneFinding || matchesFailureCue;
+}
+
+function isFeatureSummaryPrBody(body: string): boolean {
+  return (
+    matchesAny(body, PR_BODY_FEATURE_SUMMARY_PATTERNS) &&
+    !matchesAny(body, PR_BODY_EXPLICIT_FAILURE_PATTERNS)
+  );
 }
 
 function detectConfidence(

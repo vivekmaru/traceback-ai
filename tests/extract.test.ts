@@ -178,6 +178,91 @@ describe("extractFailureCandidates", () => {
     expect(extractFailureCandidates([record])).toEqual([]);
   });
 
+  test("does not extract Traceback feature-summary PR bodies as failures", () => {
+    const featureSummaries = [
+      "Summary add traceback analyze --dry-run and traceback analyze --provider openai write compact analysis run artifacts under .traceback/analysis/runs/<runId>/ add OpenAI provider isolation, explicit privacy warning, missing-key preservation, strict output validation, and collision-safe run IDs document analysis behavior",
+      "Context\n\n## Summary\n\n- Add traceback analyze --provider openai artifacts.\n- Preserve missing-key diagnostics and collision-safe run IDs.",
+      "## Summary\n\n- Add missing data export report for local review UI.",
+      "## Summary\n\n- Add security headers and missing-key diagnostics for exported rules.",
+      "## Summary\n\n- Add traceback rules export --run --target agents-md for controlled export of accepted draft rules.\n- Write proposed artifacts under .traceback/exports/<runId>/ without modifying root instruction files.\n- Document safety boundaries and add tests for success, missing drafts, unsupported targets, root AGENTS.md preservation.",
+      "## Summary\n\n- Add traceback rules review --run --policy conservative for deterministic local rule decisions.\n- Add optional --from normalization for human-edited rule-decision files.\n- Add controlled rules export --target agents-md behavior that prefers rule decisions when present, uses edited fields, excludes rejected and needs_edit.",
+    ];
+
+    for (const body of featureSummaries) {
+      const record = {
+        ...baseRecord,
+        body,
+        issueComments: [],
+        reviewComments: [],
+        reviews: [],
+      };
+
+      expect(extractFailureCandidates([record])).toEqual([]);
+    }
+  });
+
+  test("still extracts high-signal PR body summaries", () => {
+    const summaries = [
+      {
+        body: "## Summary\n\n- Add retry handling because upload fails intermittently.",
+        category: "unknown",
+      },
+      {
+        body: "## Summary\n\n- Fix renderer because downloaded PNG does not render fields shown in preview.",
+        category: "preview_output_parity_failure",
+      },
+      {
+        body: "## Summary\n\n- Fix renderer because downloaded PNG doesn't render fields shown in preview.",
+        category: "preview_output_parity_failure",
+      },
+      {
+        body: "## Summary\n\n- Fix redirect handling because this breaks protected redirects by dropping search params.",
+        category: "query_state_preservation_failure",
+      },
+      {
+        body: "## Summary\n\n- Guard parser because malformed input throws RangeError.",
+        category: "parser_permissiveness",
+      },
+      {
+        body: "## Summary\n\n- Add parser guard; parsing fails on malformed input.",
+        category: "parser_permissiveness",
+      },
+      {
+        body: "## Summary\n\n- Parsing fails.",
+        category: "parser_permissiveness",
+      },
+      {
+        body: "## Summary\n\n- Add parser guard because malformed input cannot parse.",
+        category: "parser_permissiveness",
+      },
+      {
+        body: "## Summary\n\n- Add guard to avoid forwarding auth headers to the analytics proxy.",
+        category: "security_privacy_regression",
+      },
+      {
+        body: "## Summary\n\n- Date.now() is called during render, causing URL regeneration and refetch spam.",
+        category: "render_time_side_effect",
+      },
+    ];
+
+    for (const { body, category } of summaries) {
+      const record = {
+        ...baseRecord,
+        body,
+        issueComments: [],
+        reviewComments: [],
+        reviews: [],
+      };
+
+      const [candidate] = extractFailureCandidates([record]);
+
+      expect(candidate).toMatchObject({
+        sourceType: "pr_body",
+        candidateCategory: category,
+      });
+    }
+  });
+
   test("maps predictable Math.random identifiers to insecure randomness", () => {
     const record = recordWithReviewComment(
       "Math.random() creates predictable random identifiers for uploaded files in offline queues; use cryptographically secure randomness.",
@@ -596,6 +681,193 @@ describe("deterministic extraction helpers", () => {
     );
     expect(detectCategory("Template text is overwritten after React Query refetch while editing")).toBe(
       "user_input_loss",
+    );
+    expect(
+      detectCategory(
+        "Reject invalid manual decision values instead of coercing human-edited rule-decisions.json input.",
+      ),
+    ).toBe("human_editable_artifact_validation");
+    expect(detectCategory("Manual decision dialog shows invalid tooltip state")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Manual decision panel opens export modal")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Status inference uses runId metadata when grouping replies")).toBe(
+      "status_inference_error",
+    );
+    expect(detectCategory("Validate draft-rules runId before creating rule decisions")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Validate export runId before accepting manual decisions")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Validate human-editable export file before normalizing")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Human-editable export file UI crashes")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Export runId handling docs for the local UI")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Reject manual decisions that reference unknown rule IDs")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Unknown rule IDs page crashes while filtering docs")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("rule-decisions parser fails on trailing whitespace")).toBe(
+      "parser_permissiveness",
+    );
+    expect(detectCategory("Manual decision dialog crashes when focus is lost")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Human-editable form resets while editing")).toBe("user_input_loss");
+    expect(detectCategory("Edited fields schema parser fails validation")).toBe(
+      "parser_permissiveness",
+    );
+    expect(detectCategory("Accepted/edited tab crashes when opening settings")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Accepted/edited tab crashes in rule-decisions UI")).not.toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Validate accepted/edited rule decisions before export")).toBe(
+      "human_editable_artifact_validation",
+    );
+    expect(detectCategory("Parser coercion accepts malformed values during decode")).toBe(
+      "parser_permissiveness",
+    );
+    expect(
+      detectCategory(
+        "Detect candidate IDs reused across multiple enriched records so duplicate sourceCandidateIds cannot overwrite earlier records.",
+      ),
+    ).toBe("identifier_collision_record_loss");
+    expect(
+      detectCategory("sourceCandidateIds need disambiguation to avoid mixing records"),
+    ).toBe("identifier_collision_record_loss");
+    expect(detectCategory("Missing sourceCandidateId disambiguation in tooltips")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Duplicate candidate IDs reset selected filters")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Duplicate candidate IDs show wrong record tooltip")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("CSS selector collisions break layout rendering")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Duplicate DOM IDs break label focus")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("DOM ID collisions break accessibility labels")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("CSS collisions in enriched records table break layout")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Overwrites records table columns while dragging")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Records list drops selection when scrolling")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Suffixing IDs in DOM labels breaks accessibility")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Filename suffixing bug drops uploaded files")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Enriched records table omits cluster title")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Include sourceCandidateIds in export output")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("Preserve sourceCandidateIds in export output")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("mapRecordsByCandidateId drops duplicate candidate IDs")).toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("mapRecordsByCandidateId resets form state unexpectedly")).not.toBe(
+      "identifier_collision_record_loss",
+    );
+    expect(detectCategory("React Query refetch overwrites form values while editing")).toBe(
+      "user_input_loss",
+    );
+    expect(detectCategory("React Query refetch overwrites existing form values while editing")).toBe(
+      "user_input_loss",
+    );
+    expect(
+      detectCategory(
+        "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",
+      ),
+    ).toBe("status_inference_error");
+    expect(detectCategory("This breaks protected redirects and is not fixed yet")).toBe(
+      "query_state_preservation_failure",
+    );
+    expect(detectCategory("Parser mishandles negated predicate")).toBe("parser_permissiveness");
+    expect(detectCategory("API schema preserves inReplyTo for review comments")).not.toBe(
+      "status_inference_error",
+    );
+    expect(detectCategory("Persist inReplyTo thread IDs in API responses")).not.toBe(
+      "status_inference_error",
+    );
+    expect(detectCategory("Thread context menu fails to open")).not.toBe("status_inference_error");
+    expect(detectCategory("Need whole PR context when rendering replies sidebar")).not.toBe(
+      "status_inference_error",
+    );
+    expect(detectCategory("Replies aggregate list in the sidebar crashes when scrolling")).not.toBe(
+      "status_inference_error",
+    );
+    expect(
+      detectCategory("Review comment thread replies sidebar crashes when scrolling"),
+    ).not.toBe("status_inference_error");
+    expect(
+      detectCategory("Review comment thread replies infer accepted status incorrectly"),
+    ).toBe("status_inference_error");
+    expect(
+      detectCategory(
+        "Support importing more than 100 requested PRs with fixed per_page pagination instead of one truncated pulls page request.",
+      ),
+    ).toBe("pagination_boundary_error");
+    expect(detectCategory("UI pagination resets current page after refetch")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("per_page docs fail to render")).not.toBe("pagination_boundary_error");
+    expect(detectCategory("per_page request validator rejects invalid value")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("per_page pagination control resets in UI")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Pagination request debounce bug in UI")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Pagination bug in PRs table drops selection")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Pagination UI fails when page=2 is preserved in URL")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Pagination control truncates page size label in UI")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Quota allows more than 100 users")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Requested PR list UI drops selection")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Requested PRs table silently truncated at 40 chars")).not.toBe(
+      "pagination_boundary_error",
+    );
+    expect(detectCategory("Base64 content is silently truncated")).toBe("parser_permissiveness");
+    expect(detectCategory("Redirect drops query state when page=2 is preserved")).toBe(
+      "query_state_preservation_failure",
     );
   });
 });
