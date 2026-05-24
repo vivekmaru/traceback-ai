@@ -315,6 +315,11 @@ Verified on 2026-05-23:
   needs validation semantics for artifact-validation scoring, duplicate-ID and
   collision patterns need actual collision/loss semantics, and pagination
   patterns no longer treat generic `request` as import-boundary evidence.
+- PR #11 post-fix review follow-up tightened the same family again: generic
+  `PRs` no longer makes pagination a boundary/import failure, `records` near
+  collisions needs real record-loss semantics, `inReplyTo` needs outcome/status
+  inference context, `invalid` near a manual-decision UI no longer scores
+  artifact validation, and concise `Parsing fails` summaries remain candidates.
 
 Environment note:
 
