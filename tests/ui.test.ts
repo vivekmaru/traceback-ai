@@ -173,6 +173,7 @@ describe("loadUiState", () => {
         sourceDraftRulesMarkdownPath: "draft-rules.md",
         outputs: ["AGENTS.proposed.md"],
         exportedRuleCount: 1,
+        broaderLearningCount: 1,
         warnings: [],
       });
       await writeFile(
@@ -180,8 +181,12 @@ describe("loadUiState", () => {
         "## Traceback Learnings\n\nWhen editing Traceback:\n\n- Preserve provenance.\n",
       );
       await writeFile(
+        path.join(repoRoot, ".traceback", "exports", runId, "broader-learnings.md"),
+        "# Traceback Broader Learnings\n\n## General Engineering\n\n- Add negative fixtures.\n",
+      );
+      await writeFile(
         path.join(repoRoot, ".traceback", "exports", runId, "export-summary.md"),
-        "# Traceback Rule Export Summary\n\n- Rules exported: 1\n",
+        "# Traceback Rule Export Summary\n\n- Repo-specific rules exported: 1\n- Broader learnings preserved: 1\n",
       );
 
       const state = await loadUiState(repoRoot, new Date("2026-05-22T13:15:00.000Z"));
@@ -219,9 +224,14 @@ describe("loadUiState", () => {
         target: "agents-md",
         createdAt: "2026-05-22T13:14:00.000Z",
         exportedRuleCount: 1,
+        broaderLearningCount: 1,
         hasProposedAgents: true,
+        hasBroaderLearnings: true,
         proposedAgentsText: "## Traceback Learnings\n\nWhen editing Traceback:\n\n- Preserve provenance.\n",
-        summaryText: "# Traceback Rule Export Summary\n\n- Rules exported: 1\n",
+        broaderLearningsText:
+          "# Traceback Broader Learnings\n\n## General Engineering\n\n- Add negative fixtures.\n",
+        summaryText:
+          "# Traceback Rule Export Summary\n\n- Repo-specific rules exported: 1\n- Broader learnings preserved: 1\n",
       });
       expect(state.exportItems).toHaveLength(1);
       expect(state.exportItems[0]).toBe(exportItem);

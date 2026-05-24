@@ -121,9 +121,12 @@ export type UiExport = {
   target: string;
   createdAt: string | null;
   exportedRuleCount: number;
+  broaderLearningCount: number;
   warnings: string[];
   hasProposedAgents: boolean;
+  hasBroaderLearnings: boolean;
   proposedAgentsText: string | null;
+  broaderLearningsText: string | null;
   summaryText: string | null;
 };
 
@@ -150,6 +153,7 @@ type RulesExportManifest = {
   target?: string;
   createdAt?: string;
   exportedRuleCount?: number;
+  broaderLearningCount?: number;
   warnings?: string[];
 };
 
@@ -301,15 +305,19 @@ async function readExport(
 
   const exportDir = path.join(exportsRoot, runId);
   const proposedAgentsText = await readTextIfExists(path.join(exportDir, "AGENTS.proposed.md"));
+  const broaderLearningsText = await readTextIfExists(path.join(exportDir, "broader-learnings.md"));
   const summaryText = await readTextIfExists(path.join(exportDir, "export-summary.md"));
   return {
     runId,
     target: manifest.target ?? "unknown",
     createdAt: manifest.createdAt ?? null,
     exportedRuleCount: manifest.exportedRuleCount ?? 0,
+    broaderLearningCount: manifest.broaderLearningCount ?? 0,
     warnings: manifest.warnings ?? [],
     hasProposedAgents: proposedAgentsText !== null,
+    hasBroaderLearnings: broaderLearningsText !== null,
     proposedAgentsText,
+    broaderLearningsText,
     summaryText,
   };
 }
@@ -1071,8 +1079,10 @@ function renderHtml(): string {
           \${field("Target", exportItem.target)}
           \${field("Created", formatDate(exportItem.createdAt))}
           \${field("Exported rules", exportItem.exportedRuleCount)}
+          \${field("Broader learnings", exportItem.broaderLearningCount)}
           \${field("Warnings", exportItem.warnings.length ? exportItem.warnings.join(" ") : "none")}
           \${exportItem.proposedAgentsText ? \`<pre class="proposal">\${escapeHtml(exportItem.proposedAgentsText)}</pre>\` : "<p>No AGENTS.proposed.md was written for this run.</p>"}
+          \${exportItem.broaderLearningsText ? \`<pre class="proposal">\${escapeHtml(exportItem.broaderLearningsText)}</pre>\` : ""}
         </article>
       \` : "";
       container.innerHTML = "<h2>Rules and exports</h2><p class='intro'>Draft rules are working artifacts. Rule decisions decide what can be exported. The proposed export is reviewable guidance and is not applied automatically.</p>" + runHtml + rulesHtml + decisionsHtml + exportHtml;

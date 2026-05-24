@@ -393,6 +393,7 @@ function draftRule(overrides: Partial<DraftRule>): DraftRule {
     status: "draft",
     title: "Template intent and protected-URL state preservation",
     rule: "Persist and restore full navigation intent.",
+    learningScope: "repo_specific",
     sourceDecisionIds: ["review-cluster-template"],
     sourceCandidateIds: ["failure-pr-91-review_comment-3241022371"],
     sourcePrs: [91],

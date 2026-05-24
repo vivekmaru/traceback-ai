@@ -117,6 +117,56 @@ describe("runRulesDraft", () => {
     }
   });
 
+  test("classifies draft rules by learning scope", async () => {
+    const repoRoot = await repoWithReviewDecisions({
+      runId: "2026-05-18T11-35-13Z",
+      decisions: [
+        decision({
+          id: "review-cluster-traceback-taxonomy",
+          decision: "accepted",
+          title: "Traceback taxonomy fixture guard",
+          preventionRule:
+            "When editing Traceback taxonomy heuristics, require contextual tokens and positive/negative fixtures.",
+        }),
+        decision({
+          id: "review-cluster-general-heuristics",
+          decision: "accepted",
+          title: "Fixture-backed classifier tuning",
+          preventionRule:
+            "When tuning extraction heuristics, test standalone and contextual examples before broadening matches.",
+        }),
+        decision({
+          id: "review-cluster-pr-loop",
+          decision: "accepted",
+          title: "Review-loop audit after repeated comments",
+          preventionRule:
+            "After repeated PR review comments in one area, audit the whole matcher family before pushing another patch.",
+        }),
+      ],
+    });
+
+    try {
+      const result = await runRulesDraft(repoRoot, {
+        runId: "2026-05-18T11-35-13Z",
+        now: new Date("2026-05-18T13:00:00Z"),
+      });
+
+      const rules = await readJson(path.join(result.rulesDir, "draft-rules.json"));
+      const markdown = await readFile(path.join(result.rulesDir, "draft-rules.md"), "utf8");
+
+      expect(rules.rules.map((rule: any) => [rule.id, rule.learningScope])).toEqual([
+        ["draft-rule-review-cluster-traceback-taxonomy", "repo_specific"],
+        ["draft-rule-review-cluster-general-heuristics", "general_engineering"],
+        ["draft-rule-review-cluster-pr-loop", "process_or_workflow"],
+      ]);
+      expect(markdown).toContain("- Learning scope: repo_specific");
+      expect(markdown).toContain("- Learning scope: general_engineering");
+      expect(markdown).toContain("- Learning scope: process_or_workflow");
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("writes an empty draft when there are no accepted decisions", async () => {
     const repoRoot = await repoWithReviewDecisions({
       runId: "2026-05-18T11-35-13Z",

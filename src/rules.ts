@@ -4,11 +4,14 @@ import { assertSafeRunId } from "./run-id";
 import { getTracebackPaths } from "./storage";
 import type { ReviewDecision, ReviewDecisionValue, ReviewDecisionsFile } from "./review";
 
+export type LearningScope = "repo_specific" | "general_engineering" | "process_or_workflow";
+
 export type DraftRule = {
   id: string;
   status: "draft";
   title: string;
   rule: string;
+  learningScope: LearningScope;
   sourceDecisionIds: string[];
   sourceCandidateIds: string[];
   sourcePrs: number[];
@@ -100,6 +103,7 @@ function toDraftRule(decision: ReviewDecision): DraftRule {
     status: "draft",
     title: decision.editedTitle ?? decision.title,
     rule: decision.editedPreventionRule ?? decision.preventionRule,
+    learningScope: classifyLearningScope(decision),
     sourceDecisionIds: [decision.id],
     sourceCandidateIds: decision.sourceCandidateIds,
     sourcePrs: decision.sourcePrs,
@@ -110,6 +114,46 @@ function toDraftRule(decision: ReviewDecision): DraftRule {
       ...decision.notes,
     ],
   };
+}
+
+function classifyLearningScope(decision: ReviewDecision): LearningScope {
+  const text = [
+    decision.title,
+    decision.preventionRule,
+    decision.editedTitle,
+    decision.editedPreventionRule,
+    decision.reason,
+    ...decision.notes,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /\btraceback\b/.test(text) ||
+    /\bagentfail\b/.test(text) ||
+    text.includes(".traceback") ||
+    text.includes("traceback taxonomy") ||
+    text.includes("traceback run") ||
+    text.includes("traceback artifact")
+  ) {
+    return "repo_specific";
+  }
+
+  if (
+    /\bpr review\b/.test(text) ||
+    /\breview-loop\b/.test(text) ||
+    /\breview loop\b/.test(text) ||
+    /\bclean check\b/.test(text) ||
+    /\bclean-check\b/.test(text) ||
+    /\bafter repeated\b/.test(text) ||
+    /\bbefore pushing\b/.test(text) ||
+    /\bpush another patch\b/.test(text)
+  ) {
+    return "process_or_workflow";
+  }
+
+  return "general_engineering";
 }
 
 function assertUniqueDecisionIds(decisions: ReviewDecision[]): void {
@@ -155,6 +199,7 @@ function renderRules(rules: DraftRule[]): string[] {
     "",
     `- ID: ${rule.id}`,
     `- Status: ${rule.status}`,
+    `- Learning scope: ${rule.learningScope}`,
     `- Confidence: ${rule.confidence}`,
     `- Source decisions: ${rule.sourceDecisionIds.join(", ")}`,
     `- Source PRs: ${rule.sourcePrs.map((pr) => `#${pr}`).join(", ") || "none"}`,

@@ -3,7 +3,7 @@ import path from "node:path";
 import { assertSafeRunId } from "./run-id";
 import { getTracebackPaths } from "./storage";
 import type { ReviewDecision, ReviewDecisionsFile } from "./review";
-import type { DraftRule, DraftRulesFile } from "./rules";
+import type { DraftRule, DraftRulesFile, LearningScope } from "./rules";
 import type { RuleDecision, RuleDecisionsFile } from "./rules-review";
 
 export type RulesExportTarget = "agents-md";
@@ -17,10 +17,12 @@ export type RunRulesExportOptions = {
 export type RulesExportResult = {
   exportDir: string;
   proposedPath: string | null;
+  broaderLearningsPath: string | null;
   summaryPath: string;
   manifestPath: string;
   outputs: string[];
   exportedRuleCount: number;
+  broaderLearningCount: number;
 };
 
 type RulesExportManifest = {
@@ -34,6 +36,8 @@ type RulesExportManifest = {
   sourceRuleDecisionsPath?: string;
   outputs: string[];
   exportedRuleCount: number;
+  broaderLearningCount: number;
+  learningScopeCounts: Record<LearningScope, number>;
   warnings: string[];
 };
 
@@ -48,6 +52,7 @@ type ExportableRule = {
   reviewDecision: string;
   sourceDecisionIds: string[];
   notes: string[];
+  learningScope: LearningScope;
 };
 
 const SUPPORTED_TARGETS: RulesExportTarget[] = ["agents-md"];
@@ -99,24 +104,50 @@ export async function runRulesExport(
   const exportDir = path.join(paths.exports, options.runId);
   await mkdir(exportDir, { recursive: true });
 
+  const repoSpecificRules = exportableRules.filter((rule) => rule.learningScope === "repo_specific");
+  const broaderLearnings = exportableRules.filter((rule) => rule.learningScope !== "repo_specific");
+  const learningScopeCounts = countLearningScopes(exportableRules);
+
   const proposedPath = path.join(exportDir, "AGENTS.proposed.md");
+  const broaderLearningsPath = path.join(exportDir, "broader-learnings.md");
   const summaryPath = path.join(exportDir, "export-summary.md");
   const manifestPath = path.join(exportDir, "manifest.json");
-  const outputs =
-    exportableRules.length > 0 ? [proposedPath, summaryPath, manifestPath] : [summaryPath, manifestPath];
+  const outputs = [
+    ...(repoSpecificRules.length > 0 ? [proposedPath] : []),
+    ...(broaderLearnings.length > 0 ? [broaderLearningsPath] : []),
+    summaryPath,
+    manifestPath,
+  ];
 
-  if (exportableRules.length > 0) {
+  if (repoSpecificRules.length > 0) {
     await writeFile(
       proposedPath,
       renderAgentsProposed({
         runId: options.runId,
         createdAt,
-        rules: exportableRules,
+        rules: repoSpecificRules,
       }),
       "utf8",
     );
   } else {
     await rm(proposedPath, { force: true });
+  }
+
+  if (broaderLearnings.length > 0) {
+    await writeFile(
+      broaderLearningsPath,
+      renderBroaderLearnings({
+        runId: options.runId,
+        createdAt,
+        rules: broaderLearnings,
+      }),
+      "utf8",
+    );
+  } else {
+    await rm(broaderLearningsPath, { force: true });
+  }
+
+  if (exportableRules.length === 0) {
     warnings.push("No exportable rules were found.");
   }
 
@@ -132,7 +163,9 @@ export async function runRulesExport(
       ? { sourceRuleDecisionsPath: ruleDecisionRead.sourceRuleDecisionsPath }
       : {}),
     outputs,
-    exportedRuleCount: exportableRules.length,
+    exportedRuleCount: repoSpecificRules.length,
+    broaderLearningCount: broaderLearnings.length,
+    learningScopeCounts,
     warnings,
   };
 
@@ -141,8 +174,10 @@ export async function runRulesExport(
     renderExportSummary({
       runId: options.runId,
       target,
-      exportedRuleCount: exportableRules.length,
-      proposedPath: exportableRules.length > 0 ? proposedPath : null,
+      exportedRuleCount: repoSpecificRules.length,
+      broaderLearningCount: broaderLearnings.length,
+      proposedPath: repoSpecificRules.length > 0 ? proposedPath : null,
+      broaderLearningsPath: broaderLearnings.length > 0 ? broaderLearningsPath : null,
       warnings,
     }),
     "utf8",
@@ -151,11 +186,13 @@ export async function runRulesExport(
 
   return {
     exportDir,
-    proposedPath: exportableRules.length > 0 ? proposedPath : null,
+    proposedPath: repoSpecificRules.length > 0 ? proposedPath : null,
+    broaderLearningsPath: broaderLearnings.length > 0 ? broaderLearningsPath : null,
     summaryPath,
     manifestPath,
     outputs,
-    exportedRuleCount: exportableRules.length,
+    exportedRuleCount: repoSpecificRules.length,
+    broaderLearningCount: broaderLearnings.length,
   };
 }
 
@@ -213,6 +250,7 @@ function buildExportableRules({
           reviewDecision: decision.decision,
           sourceDecisionIds: rule.sourceDecisionIds,
           notes: decision.notes,
+          learningScope: rule.learningScope ?? "repo_specific",
         },
       ];
     });
@@ -242,6 +280,7 @@ function buildExportableRules({
       reviewDecision: reviewDecisions.join(", ") || "accepted draft rule",
       sourceDecisionIds: rule.sourceDecisionIds,
       notes: rule.notes,
+      learningScope: rule.learningScope ?? "repo_specific",
     };
   });
 }
@@ -376,17 +415,53 @@ function renderInstructionList(rules: ExportableRule[]): string[] {
   );
 }
 
+function renderBroaderLearnings({
+  runId,
+  createdAt,
+  rules,
+}: {
+  runId: string;
+  createdAt: string;
+  rules: ExportableRule[];
+}): string {
+  const general = rules.filter((rule) => rule.learningScope === "general_engineering");
+  const process = rules.filter((rule) => rule.learningScope === "process_or_workflow");
+
+  return [
+    "# Traceback Broader Learnings",
+    "",
+    "These learnings are preserved from Traceback evidence but are not emitted as repo-level agent guidance.",
+    "",
+    "## General Engineering",
+    "",
+    ...renderInstructionList(general),
+    "",
+    "## Process Or Workflow",
+    "",
+    ...renderInstructionList(process),
+    "",
+    `Generated from Traceback run: ${runId}`,
+    `Generated: ${createdAt}`,
+    "Source details remain in this export directory's manifest and the related `.traceback/rules/` artifacts.",
+    "",
+  ].join("\n");
+}
+
 function renderExportSummary({
   runId,
   target,
   exportedRuleCount,
+  broaderLearningCount,
   proposedPath,
+  broaderLearningsPath,
   warnings,
 }: {
   runId: string;
   target: RulesExportTarget;
   exportedRuleCount: number;
+  broaderLearningCount: number;
   proposedPath: string | null;
+  broaderLearningsPath: string | null;
   warnings: string[];
 }): string {
   return [
@@ -394,8 +469,10 @@ function renderExportSummary({
     "",
     `- Run ID: ${runId}`,
     `- Target: ${target}`,
-    `- Rules exported: ${exportedRuleCount}`,
+    `- Repo-specific rules exported: ${exportedRuleCount}`,
+    `- Broader learnings preserved: ${broaderLearningCount}`,
     `- Output path: ${proposedPath ?? "No AGENTS.proposed.md written."}`,
+    `- Broader learnings path: ${broaderLearningsPath ?? "No broader-learnings.md written."}`,
     "- Root repo files modified: none",
     "",
     "## Warnings",
@@ -405,6 +482,14 @@ function renderExportSummary({
     "No root repo instruction files were modified.",
     "",
   ].join("\n");
+}
+
+function countLearningScopes(rules: ExportableRule[]): Record<LearningScope, number> {
+  return {
+    repo_specific: rules.filter((rule) => rule.learningScope === "repo_specific").length,
+    general_engineering: rules.filter((rule) => rule.learningScope === "general_engineering").length,
+    process_or_workflow: rules.filter((rule) => rule.learningScope === "process_or_workflow").length,
+  };
 }
 
 function renderWarnings(warnings: string[]): string[] {

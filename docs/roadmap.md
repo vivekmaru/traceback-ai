@@ -130,10 +130,13 @@ Milestones:
    Implemented for the Traceback dogfood run after thread-aware statuses.
 3. Taxonomy/category tuning from real Traceback runs. Implemented for the first
    Traceback dogfood pass.
-4. Candidate review UI polish: filters, search, sorting, and status evidence.
-5. Evidence quality scoring.
-6. Redaction checks for shareable/exportable artifacts.
-7. External repo validation, after the local loop feels sharper and less noisy.
+4. Learning scope separation for high-signal review feedback. Implemented so
+   repo-specific agent guidance and broader engineering/process lessons are
+   preserved separately.
+5. Candidate review UI polish: filters, search, sorting, and status evidence.
+6. Evidence quality scoring.
+7. Redaction checks for shareable/exportable artifacts.
+8. External repo validation, after the local loop feels sharper and less noisy.
 
 Outcome/status detection should distinguish:
 
