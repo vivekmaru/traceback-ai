@@ -5,7 +5,13 @@ import type { AnalysisOutput } from "./analyze";
 import type { ReviewDecision, ReviewDecisionsFile } from "./review";
 import type { DraftRule, DraftRulesFile } from "./rules";
 import type { RuleDecision, RuleDecisionsFile } from "./rules-review";
-import type { FailureCandidate, FailureCandidateStatus, NormalizedPullRequestRecord } from "./types";
+import type {
+  FailureCandidate,
+  FailureCandidateStatus,
+  NormalizedPullRequestRecord,
+  NormalizedReviewComment,
+  NormalizedReviewThread,
+} from "./types";
 
 export type UiServerOptions = {
   host: string;
@@ -43,13 +49,30 @@ export type UiCandidate = {
   sourcePrNumber: number;
   sourcePrUrl: string;
   sourceCommentUrl: string | null;
+  sourceAuthor: string | null;
   sourceType: FailureCandidate["sourceType"];
+  sourcePath: string | null;
+  sourceLine: number | null;
   title: string;
   category: FailureCandidate["candidateCategory"];
   severity: FailureCandidate["candidateSeverity"];
   confidence: FailureCandidate["confidence"];
   status: FailureCandidate["status"];
   evidenceExcerpt: string;
+  detectedAgentMarkers: string[];
+  notes: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  statusEvidence: UiCandidateStatusEvidence;
+};
+
+export type UiCandidateStatusEvidence = {
+  label: string;
+  detail: string;
+  replyCount: number;
+  latestReplyExcerpt: string | null;
+  threadResolved: boolean | null;
+  threadOutdated: boolean | null;
 };
 
 export type UiRun = {
@@ -174,7 +197,7 @@ export async function loadUiState(repoRoot: string, now = new Date()): Promise<U
     generatedAt: now.toISOString(),
     repoRoot,
     summary,
-    candidates: candidates.map(toUiCandidate),
+    candidates: candidates.map((candidate) => toUiCandidate(candidate, records)),
     runs,
     clusters: runs.flatMap((run) => run.clusterItems),
     reviewDecisions: runs.flatMap((run) => run.reviewDecisionItems),
@@ -459,20 +482,136 @@ function buildWarnings({
   return warnings;
 }
 
-function toUiCandidate(candidate: FailureCandidate): UiCandidate {
+function toUiCandidate(candidate: FailureCandidate, records: NormalizedPullRequestRecord[]): UiCandidate {
+  const source = findCandidateSource(candidate, records);
   return {
     id: candidate.id,
     sourcePrNumber: candidate.sourcePrNumber,
     sourcePrUrl: candidate.sourcePrUrl,
     sourceCommentUrl: candidate.sourceCommentUrl,
+    sourceAuthor: candidate.sourceAuthor,
     sourceType: candidate.sourceType,
+    sourcePath: source.comment?.path ?? source.thread?.path ?? null,
+    sourceLine: source.comment?.line ?? source.comment?.originalLine ?? source.thread?.line ?? null,
     title: candidate.extractedTitle,
     category: candidate.candidateCategory,
     severity: candidate.candidateSeverity,
     confidence: candidate.confidence,
     status: candidate.status,
     evidenceExcerpt: candidate.evidenceExcerpt,
+    detectedAgentMarkers: candidate.detectedAgentMarkers,
+    notes: candidate.notes,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+    statusEvidence: buildCandidateStatusEvidence(candidate, source),
   };
+}
+
+function findCandidateSource(
+  candidate: FailureCandidate,
+  records: NormalizedPullRequestRecord[],
+): {
+  comment: NormalizedReviewComment | null;
+  replies: NormalizedReviewComment[];
+  thread: NormalizedReviewThread | null;
+} {
+  if (candidate.sourceType !== "review_comment") {
+    return { comment: null, replies: [], thread: null };
+  }
+
+  const record = records.find((item) => item.prNumber === candidate.sourcePrNumber);
+  const sourceId = parseReviewCommentId(candidate);
+  if (!record || sourceId === null) {
+    return { comment: null, replies: [], thread: null };
+  }
+
+  const comment = record.reviewComments.find((item) => item.id === sourceId) ?? null;
+  const replies = record.reviewComments
+    .filter((item) => item.inReplyToId === sourceId)
+    .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
+  const thread =
+    record.reviewThreads.find((item) => item.commentIds.includes(String(sourceId))) ?? null;
+
+  return { comment, replies, thread };
+}
+
+function parseReviewCommentId(candidate: FailureCandidate): number | null {
+  const fromUrl = candidate.sourceCommentUrl?.match(/discussion_r(\d+)/)?.[1];
+  const fromId = candidate.id.match(/review_comment-(\d+)$/)?.[1];
+  const value = fromUrl ?? fromId;
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildCandidateStatusEvidence(
+  candidate: FailureCandidate,
+  source: {
+    replies: NormalizedReviewComment[];
+    thread: NormalizedReviewThread | null;
+  },
+): UiCandidateStatusEvidence {
+  const latestReply = source.replies.at(-1);
+  const latestReplyExcerpt = latestReply
+    ? truncateText(normalizeWhitespace(latestReply.body), 220)
+    : null;
+  const threadResolved = source.thread?.isResolved ?? null;
+  const threadOutdated = source.thread?.isOutdated ?? null;
+
+  if (latestReplyExcerpt) {
+    return {
+      label: "Same-thread reply",
+      detail: `Latest reply from ${latestReply?.author ?? "unknown author"} supports status ${candidate.status}.`,
+      replyCount: source.replies.length,
+      latestReplyExcerpt,
+      threadResolved,
+      threadOutdated,
+    };
+  }
+
+  if (threadResolved) {
+    return {
+      label: "GitHub thread resolved",
+      detail: "No same-thread reply was imported, but the source review thread is marked resolved.",
+      replyCount: 0,
+      latestReplyExcerpt: null,
+      threadResolved,
+      threadOutdated,
+    };
+  }
+
+  if (threadOutdated) {
+    return {
+      label: "GitHub thread outdated",
+      detail: "No stronger reply evidence was imported, and the source review thread is marked outdated.",
+      replyCount: 0,
+      latestReplyExcerpt: null,
+      threadResolved,
+      threadOutdated,
+    };
+  }
+
+  return {
+    label: "Candidate extraction",
+    detail: candidate.notes[0] ?? "No thread outcome evidence was imported for this candidate.",
+    replyCount: 0,
+    latestReplyExcerpt: null,
+    threadResolved,
+    threadOutdated,
+  };
+}
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength - 1).trimEnd()}...`;
 }
 
 function toUiReviewDecision(runId: string, decision: ReviewDecision): UiReviewDecision {
@@ -724,13 +863,65 @@ function renderHtml(): string {
       gap: 8px;
     }
 
+    .controls {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(130px, .8fr)) auto;
+      align-items: end;
+    }
+
+    .control {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    .candidate-results {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .candidate-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .evidence {
+      display: grid;
+      gap: 6px;
+      padding-top: 4px;
+    }
+
+    .evidence blockquote {
+      margin: 0;
+      padding-left: 10px;
+      border-left: 3px solid var(--line);
+      color: var(--muted);
+    }
+
     .run {
       grid-template-columns: minmax(190px, 1.2fr) repeat(6, minmax(96px, .7fr));
       align-items: center;
     }
 
     .candidate {
-      grid-template-columns: minmax(260px, 1.4fr) repeat(4, minmax(120px, .7fr));
+      grid-template-columns: minmax(280px, 1.35fr) repeat(5, minmax(110px, .7fr));
     }
 
     .run, .candidate {
@@ -793,7 +984,7 @@ function renderHtml(): string {
     }
 
     @media (max-width: 760px) {
-      .run, .candidate {
+      .run, .candidate, .controls {
         grid-template-columns: 1fr;
       }
       h1 { font-size: 24px; }
@@ -826,7 +1017,18 @@ function renderHtml(): string {
     <section class="section" id="rules"></section>
   </main>
   <script>
-    const state = { data: null, selectedRunId: null };
+    const state = {
+      data: null,
+      selectedRunId: null,
+      candidateFilters: {
+        query: "",
+        status: "all",
+        category: "all",
+        sourceType: "all",
+        confidence: "all",
+        sort: "pr-desc",
+      },
+    };
 
     async function load() {
       const response = await fetch("/api/state");
@@ -951,14 +1153,20 @@ function renderHtml(): string {
 
     function renderCandidates(candidates, statusCounts) {
       const container = document.getElementById("candidates");
-      container.innerHTML = "<h2>Failure candidates</h2><p class='intro'>These are deterministic inputs extracted from imported PR evidence. They are candidates, not final confirmed failures.</p>" + renderStatusDistribution(statusCounts) + (candidates.length ? \`
+      const filteredCandidates = sortCandidates(filterCandidates(candidates));
+      container.innerHTML = "<h2>Failure candidates</h2><p class='intro'>These are deterministic inputs extracted from imported PR evidence. They are candidates, not final confirmed failures.</p>" + renderStatusDistribution(statusCounts) + renderCandidateControls(candidates, filteredCandidates.length) + (filteredCandidates.length ? \`
         <div class="list">
-          \${candidates.map((candidate) => \`
+          \${filteredCandidates.map((candidate) => \`
             <article class="card candidate">
               <div>
                 <h3>\${escapeHtml(candidate.title)}</h3>
                 <p>\${escapeHtml(candidate.evidenceExcerpt)}</p>
-                <p>\${candidate.sourceCommentUrl ? link(candidate.sourceCommentUrl, "Source comment") : link(candidate.sourcePrUrl, "Source PR")}</p>
+                <div class="candidate-meta">
+                  \${candidate.sourceCommentUrl ? link(candidate.sourceCommentUrl, "Source comment") : link(candidate.sourcePrUrl, "Source PR")}
+                  \${link(candidate.sourcePrUrl, "PR #" + candidate.sourcePrNumber)}
+                  \${candidate.sourcePath ? statusPill(candidate.sourcePath + (candidate.sourceLine ? ":" + candidate.sourceLine : ""), "") : ""}
+                  \${candidate.detectedAgentMarkers.map((marker) => statusPill(marker, "")).join("")}
+                </div>
               </div>
               \${field("PR", "#" + candidate.sourcePrNumber)}
               \${field("Category", candidate.category)}
@@ -968,10 +1176,169 @@ function renderHtml(): string {
                 <span class="label">Status</span><br>
                 \${statusPill(candidate.status, statusTone(candidate.status))}
               </div>
+              <div class="evidence">
+                <span class="label">Status evidence</span>
+                <strong>\${escapeHtml(candidate.statusEvidence.label)}</strong>
+                <span class="value">\${escapeHtml(candidate.statusEvidence.detail)}</span>
+                \${candidate.statusEvidence.latestReplyExcerpt ? \`<blockquote>\${escapeHtml(candidate.statusEvidence.latestReplyExcerpt)}</blockquote>\` : ""}
+                <span class="label">\${escapeHtml(threadState(candidate))}</span>
+              </div>
             </article>
           \`).join("")}
         </div>
-      \` : empty("No failure candidates found."));
+      \` : empty(candidates.length ? "No candidates match the current filters." : "No failure candidates found."));
+      bindCandidateControls(container);
+    }
+
+    function renderCandidateControls(candidates, visibleCount) {
+      const filters = state.candidateFilters;
+      return \`
+        <article class="card row">
+          <div class="controls">
+            \${control("Search", \`<input type="search" data-candidate-filter="query" placeholder="Title, evidence, PR, category, status" value="\${escapeHtml(filters.query)}">\`)}
+            \${control("Status", select("status", statusOptions(candidates), filters.status))}
+            \${control("Category", select("category", optionsFor(candidates, "category"), filters.category))}
+            \${control("Source", select("sourceType", optionsFor(candidates, "sourceType"), filters.sourceType))}
+            \${control("Confidence", select("confidence", optionsFor(candidates, "confidence"), filters.confidence))}
+            \${control("Sort", select("sort", [
+              ["pr-desc", "PR newest"],
+              ["pr-asc", "PR oldest"],
+              ["confidence-desc", "Confidence"],
+              ["status", "Status"],
+              ["category", "Category"],
+            ], filters.sort))}
+            <button type="button" data-candidate-reset>Reset</button>
+          </div>
+          <div class="candidate-results">
+            <span>Showing \${visibleCount} of \${candidates.length} candidates</span>
+            <span>Filters are local to this browser session.</span>
+          </div>
+        </article>
+      \`;
+    }
+
+    function control(label, inputHtml) {
+      return \`<label class="control"><span class="label">\${escapeHtml(label)}</span>\${inputHtml}</label>\`;
+    }
+
+    function select(name, options, selectedValue) {
+      return \`<select data-candidate-filter="\${escapeHtml(name)}">\${options.map(([value, label]) => \`
+        <option value="\${escapeHtml(value)}" \${value === selectedValue ? "selected" : ""}>\${escapeHtml(label)}</option>
+      \`).join("")}</select>\`;
+    }
+
+    function optionsFor(candidates, key) {
+      return [["all", "All"], ...Array.from(new Set(candidates.map((candidate) => candidate[key]).filter(Boolean)))
+        .sort((a, b) => String(a).localeCompare(String(b)))
+        .map((value) => [String(value), String(value)])];
+    }
+
+    function statusOptions(candidates) {
+      const counts = candidates.reduce((accumulator, candidate) => {
+        accumulator[candidate.status] = (accumulator[candidate.status] ?? 0) + 1;
+        return accumulator;
+      }, {});
+      return [["all", "All"], ...Object.keys(counts)
+        .sort((a, b) => statusRank(a) - statusRank(b) || a.localeCompare(b))
+        .map((status) => [status, status + " (" + counts[status] + ")"])];
+    }
+
+    function bindCandidateControls(container) {
+      container.querySelectorAll("[data-candidate-filter]").forEach((control) => {
+        if (control.dataset.candidateFilter === "query") {
+          control.addEventListener("input", () => updateCandidateFilter(control));
+        } else {
+          control.addEventListener("change", () => updateCandidateFilter(control));
+        }
+      });
+      container.querySelector("[data-candidate-reset]")?.addEventListener("click", () => {
+        state.candidateFilters = {
+          query: "",
+          status: "all",
+          category: "all",
+          sourceType: "all",
+          confidence: "all",
+          sort: "pr-desc",
+        };
+        renderCandidates(state.data.candidates, state.data.summary.statusCounts);
+      });
+    }
+
+    function updateCandidateFilter(control) {
+      const filterName = control.dataset.candidateFilter;
+      const value = control.value;
+      state.candidateFilters[filterName] = value;
+      renderCandidates(state.data.candidates, state.data.summary.statusCounts);
+      if (filterName === "query") {
+        requestAnimationFrame(() => {
+          const input = document.querySelector('[data-candidate-filter="query"]');
+          input?.focus();
+          input?.setSelectionRange(value.length, value.length);
+        });
+      }
+    }
+
+    function filterCandidates(candidates) {
+      const filters = state.candidateFilters;
+      const query = filters.query.trim().toLowerCase();
+      return candidates.filter((candidate) => {
+        if (filters.status !== "all" && candidate.status !== filters.status) return false;
+        if (filters.category !== "all" && candidate.category !== filters.category) return false;
+        if (filters.sourceType !== "all" && candidate.sourceType !== filters.sourceType) return false;
+        if (filters.confidence !== "all" && candidate.confidence !== filters.confidence) return false;
+        if (!query) return true;
+        return candidateSearchText(candidate).includes(query);
+      });
+    }
+
+    function candidateSearchText(candidate) {
+      return [
+        candidate.id,
+        candidate.title,
+        candidate.evidenceExcerpt,
+        candidate.sourcePrNumber,
+        candidate.sourceAuthor,
+        candidate.sourceType,
+        candidate.sourcePath,
+        candidate.category,
+        candidate.severity,
+        candidate.confidence,
+        candidate.status,
+        candidate.statusEvidence.label,
+        candidate.statusEvidence.detail,
+        candidate.statusEvidence.latestReplyExcerpt,
+        ...(candidate.detectedAgentMarkers ?? []),
+        ...(candidate.notes ?? []),
+      ].filter(Boolean).join(" ").toLowerCase();
+    }
+
+    function sortCandidates(candidates) {
+      const rankedConfidence = { high: 0, medium: 1, low: 2 };
+      return [...candidates].sort((a, b) => {
+        switch (state.candidateFilters.sort) {
+          case "pr-asc":
+            return a.sourcePrNumber - b.sourcePrNumber || a.id.localeCompare(b.id);
+          case "confidence-desc":
+            return (rankedConfidence[a.confidence] ?? 9) - (rankedConfidence[b.confidence] ?? 9) || b.sourcePrNumber - a.sourcePrNumber;
+          case "status":
+            return statusRank(a.status) - statusRank(b.status) || b.sourcePrNumber - a.sourcePrNumber;
+          case "category":
+            return a.category.localeCompare(b.category) || b.sourcePrNumber - a.sourcePrNumber;
+          default:
+            return b.sourcePrNumber - a.sourcePrNumber || a.id.localeCompare(b.id);
+        }
+      });
+    }
+
+    function threadState(candidate) {
+      const evidence = candidate.statusEvidence;
+      const thread = evidence.threadResolved === null
+        ? "thread unknown"
+        : "thread " + (evidence.threadResolved ? "resolved" : "open");
+      const outdated = evidence.threadOutdated === null
+        ? "outdated unknown"
+        : evidence.threadOutdated ? "outdated" : "current";
+      return evidence.replyCount + " same-thread replies · " + thread + " · " + outdated;
     }
 
     function renderClusters(run) {
@@ -1179,6 +1546,19 @@ function renderHtml(): string {
       if (status === "rejected") return "bad";
       if (status === "candidate" || status === "contested") return "warn";
       return "";
+    }
+
+    function statusRank(status) {
+      const ranks = {
+        candidate: 0,
+        contested: 1,
+        unknown: 2,
+        resolved: 3,
+        accepted: 4,
+        superseded: 5,
+        rejected: 6,
+      };
+      return ranks[status] ?? 99;
     }
 
     function link(href, label) {
