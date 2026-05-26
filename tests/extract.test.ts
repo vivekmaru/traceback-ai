@@ -413,6 +413,33 @@ describe("extractFailureCandidates", () => {
     expect(candidate.status).toBe("resolved");
   });
 
+  test("extracts transaction existence-check regressions and treats requested fixes as resolved", () => {
+    const record = {
+      ...baseRecord,
+      issueComments: [],
+      reviewComments: [
+        {
+          ...baseRecord.reviewComments[0],
+          body: "Moving event lookup outside the transaction removes the in-transaction existence check, so if the event is deleted before insert, the foreign-key violation can bubble as a generic 500 instead of the controlled 404 this route returned before.",
+        },
+        {
+          ...baseRecord.reviewComments[0],
+          id: 2002,
+          body: "Added the null check as requested.",
+          inReplyToId: 2001,
+        },
+      ],
+      reviews: [],
+    };
+
+    const [candidate] = extractFailureCandidates([record]);
+
+    expect(candidate).toMatchObject({
+      candidateCategory: "context_omission",
+      status: "resolved",
+    });
+  });
+
   test("infers resolved status from resolved GitHub review threads without replies", () => {
     const record = {
       ...baseRecord,
@@ -649,6 +676,9 @@ describe("deterministic extraction helpers", () => {
     expect(detectStatus("I think this is unsafe. Thoughts?", [])).toBe("contested");
     expect(detectStatus("This is unsafe", ["I disagree, this is not an issue."])).toBe("rejected");
     expect(detectStatus("This is unsafe", ["Good catch, addressed in abc123."])).toBe("resolved");
+    expect(detectStatus("This is unsafe", ["Added the null check as requested."])).toBe(
+      "resolved",
+    );
     expect(detectStatus("This is unsafe", ["This is valid."])).toBe("accepted");
     expect(detectStatus("This is unsafe", ["Not fixed yet."])).toBe("candidate");
     expect(detectStatus("This is unsafe", ["This is not resolved."])).toBe("candidate");
@@ -801,6 +831,11 @@ describe("deterministic extraction helpers", () => {
     expect(detectCategory("React Query refetch overwrites existing form values while editing")).toBe(
       "user_input_loss",
     );
+    expect(
+      detectCategory(
+        "A stale eventId can hit a foreign-key violation and return a generic 500 after moving the existence check outside the transaction.",
+      ),
+    ).toBe("context_omission");
     expect(
       detectCategory(
         "Handle negated acceptance phrases in status inference so not fixed yet stays candidate.",

@@ -273,6 +273,80 @@ describe("loadUiState", () => {
     }
   });
 
+  test("adds candidate source and status evidence from imported review threads", async () => {
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-ui-"));
+
+    try {
+      await writeJson(path.join(repoRoot, ".traceback", "records", "pr-8.json"), {
+        ...record(8),
+        reviewComments: [
+          {
+            id: 1001,
+            author: "chatgpt-codex-connector[bot]",
+            body: "This drops the source evidence.",
+            createdAt: "2026-05-22T12:00:00.000Z",
+            updatedAt: "2026-05-22T12:00:00.000Z",
+            url: "https://github.com/vivekmaru/traceback-ai/pull/8#discussion_r1001",
+            path: "src/ui.ts",
+            line: 120,
+            originalLine: 110,
+            inReplyToId: null,
+            commitId: "abc123",
+          },
+          {
+            id: 1002,
+            author: "vivekmaru",
+            body: "Good catch, fixed in the follow-up.",
+            createdAt: "2026-05-22T12:05:00.000Z",
+            updatedAt: "2026-05-22T12:05:00.000Z",
+            url: "https://github.com/vivekmaru/traceback-ai/pull/8#discussion_r1002",
+            path: "src/ui.ts",
+            line: 120,
+            originalLine: 110,
+            inReplyToId: 1001,
+            commitId: "abc123",
+          },
+        ],
+        reviewThreads: [
+          {
+            id: "thread-1",
+            isResolved: true,
+            isOutdated: false,
+            path: "src/ui.ts",
+            line: 120,
+            startLine: null,
+            commentIds: ["1001", "1002"],
+          },
+        ],
+      });
+      await writeJson(
+        path.join(repoRoot, ".traceback", "records", "failures", "failure-pr-8-review_comment-1001.json"),
+        {
+          ...candidate("failure-pr-8-review_comment-1001"),
+          sourceCommentUrl: "https://github.com/vivekmaru/traceback-ai/pull/8#discussion_r1001",
+          status: "resolved",
+        },
+      );
+
+      const state = await loadUiState(repoRoot, new Date("2026-05-22T15:00:00.000Z"));
+
+      expect(state.candidates[0]).toMatchObject({
+        sourceAuthor: "chatgpt-codex-connector",
+        sourcePath: "src/ui.ts",
+        sourceLine: 120,
+        statusEvidence: {
+          label: "Same-thread reply",
+          replyCount: 1,
+          latestReplyExcerpt: "Good catch, fixed in the follow-up.",
+          threadResolved: true,
+          threadOutdated: false,
+        },
+      });
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   test("does not mark provider output present when the response artifact is missing", async () => {
     const repoRoot = await mkdtemp(path.join(os.tmpdir(), "traceback-ui-"));
     const runId = "2026-05-22T13-20-00Z";

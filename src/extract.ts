@@ -52,6 +52,10 @@ const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bresets?\b/i,
   /\boverwrites?\b/i,
   /\boverwritten\b/i,
+  /\bforeign-key violation\b/i,
+  /\bgeneric\s+`?500`?\b/i,
+  /\bremoves?\b.{0,80}\b(?:existence check|validation|guard|check)\b/i,
+  /\bdeleted\b.{0,80}\b(?:insert|transaction|foreign-key|500)\b/i,
   /\bsensitive\b/i,
   /\bforward(?:s|ed|ing)?\b.*\bheaders?\b/i,
   /\bheaders?\b.*\bforwarded\b/i,
@@ -377,6 +381,13 @@ const CATEGORY_PATTERNS: Array<{
   {
     category: "context_omission",
     patterns: [
+      /\bforeign-key violation\b/i,
+      /\bgeneric\s+`?500`?\b/i,
+      /\bcontrolled\s+`?404`?\b/i,
+      /\bexistence check\b/i,
+      /\bin-transaction\b/i,
+      /\btransaction\b.{0,80}\b(?:existence|check|insert|foreign-key|stale|deleted)\b/i,
+      /\b(?:existence|check|insert|foreign-key|stale|deleted)\b.{0,80}\btransaction\b/i,
       /\bexisting\b/i,
       /\bhelper\b/i,
       /\bcontract\b/i,
@@ -388,6 +399,9 @@ const CATEGORY_PATTERNS: Array<{
 ];
 
 const RESOLVED_PATTERNS = [/\bfixed\b/i, /\baddressed in\b/i, /\bresolved\b/i];
+const REQUESTED_FIX_PATTERNS = [
+  /\badded\b.{0,80}\b(?:as requested|requested|null check|guard|validation|handling|test|coverage)\b/i,
+];
 const NEGATED_RESOLUTION_PATTERNS = [
   /\bnot\s+(?:fixed|addressed|resolved)\b/i,
   /\bwasn['’]?t\s+(?:fixed|addressed|resolved)\b/i,
@@ -483,7 +497,7 @@ export function detectStatus(
     ) {
       return "candidate";
     }
-    if (matchesAny(replyText, RESOLVED_PATTERNS)) {
+    if (matchesAny(replyText, RESOLVED_PATTERNS) || matchesAny(replyText, REQUESTED_FIX_PATTERNS)) {
       return "resolved";
     }
     if (matchesAny(replyText, ACCEPTED_PATTERNS)) {

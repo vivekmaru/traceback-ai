@@ -1,6 +1,6 @@
 # Traceback Execution State
 
-Last updated: 2026-05-24
+Last updated: 2026-05-26
 
 Read this file first in future sessions. It is the living operational tracker for
 what to build next, what is out of scope, and what must be updated after work is
@@ -15,7 +15,9 @@ Tiny local read-only review UI.
 Status: first UI slice implemented; provider-rich dogfood artifacts available;
 thread-aware outcome/status detection implemented; taxonomy tuning pass from PR
 #11 completed; rule/export artifacts now separate repo-specific agent guidance
-from broader engineering and process learnings.
+from broader engineering and process learnings; candidate review UI now has
+read-only search, filters, sorting, and clearer status/evidence visibility; first
+richer external dry-run validation completed against EventSnaps.
 
 ## Why This Is Next
 
@@ -167,10 +169,10 @@ Current behavior:
 
 Remaining quality work:
 
-- Improve candidate review UI filters/search/status evidence.
 - Add evidence quality scoring after status/category quality is trustworthy.
-- Validate on an external repository after the local loop feels sharper and less
-  noisy.
+- Run provider-backed external validation when `OPENAI_API_KEY` is available.
+- Continue validating on richer external repositories as new taxonomy/status
+  shapes appear.
 
 ## Return Path To Original MVP
 
@@ -190,6 +192,25 @@ The session recorder should eventually feed the same downstream candidate,
 analysis, review, rules, and export pipeline.
 
 ## Last Verified State
+
+Verified on 2026-05-26:
+
+- Candidate UI polish added read-only search, status/category/source/confidence
+  filters, PR/status/category/confidence sorting, filtered-result counts, reset,
+  and richer per-candidate source/status evidence.
+- Candidate rows now surface source links, source file/line when imported,
+  detected agent markers, status evidence source, latest same-thread reply when
+  available, and review-thread resolved/outdated state.
+- UI state now derives candidate evidence from local `.traceback/records`
+  artifacts only; no hosted service, upload, login, LLM call, or root instruction
+  file modification was added.
+- `bun test` passed with 116 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- Browser smoke on `http://127.0.0.1:4324/` confirmed the candidate tab loaded,
+  search/filter/sort reduced the list to matching candidates, reset restored all
+  candidates, status evidence rendered, the page had no console warnings/errors,
+  and the checked viewport had no horizontal overflow.
 
 Verified through 2026-05-24:
 
@@ -360,12 +381,82 @@ Environment note:
 - If a fresh provider run is needed, pass a key through the shell environment
   for that command only and do not persist it in repo files.
 
+## 2026-05-26 External EventSnaps Validation
+
+External repo: temporary worktree from `/Users/vivek/dev/everwall`
+(`vivekmaru/EventSnaps`).
+
+Commands run:
+
+- `GITHUB_TOKEN="$(gh auth token)" /Users/vivek/dev/agentfail/dist/cli.js import --prs 20`
+- `/Users/vivek/dev/agentfail/dist/cli.js report`
+- `/Users/vivek/dev/agentfail/dist/cli.js extract`
+- `/Users/vivek/dev/agentfail/dist/cli.js analyze --dry-run`
+
+Imported evidence:
+
+- PRs: 20
+- Review comments: 23
+- Issue comments: 10
+- Review threads: 19
+- Reviews: 15
+
+Before taxonomy/status fix:
+
+- Dry-run analysis: `.traceback/analysis/runs/2026-05-26T11-00-06Z/`
+- Failure candidates: 20
+- Source counts: 16 review comments, 2 PR bodies, 1 issue comment, 1 review
+- Status counts: 12 resolved, 6 candidate, 2 superseded
+- Category counts: 5 query-state, 5 stale persisted intent, 3 preview parity,
+  2 context omission, 1 environment config, 1 insecure randomness, 1
+  performance, 1 render-time side effect, 1 user-input loss
+
+Concrete misses found:
+
+- EventSnaps PR #96 review comment about revalidating event existence inside a
+  transaction was not extracted because the failure cue was phrased as a removed
+  existence check, foreign-key violation, and generic 500.
+- Same-thread replies like `Added the null check as requested` did not mark the
+  original finding resolved.
+- Transaction comments containing `stale eventId` were over-classified as
+  `stale_persisted_intent` instead of context/contract omission.
+
+Fix applied:
+
+- Added narrow transaction/existence-check failure cues.
+- Added transaction/foreign-key/generic-500 context-omission category signals.
+- Treated narrow `added ... as requested` reply shapes as resolved.
+- Added regression coverage in `tests/extract.test.ts`.
+
+After taxonomy/status fix:
+
+- Dry-run analysis: `.traceback/analysis/runs/2026-05-26T11-02-18Z/`
+- Failure candidates: 21
+- Source counts: 17 review comments, 2 PR bodies, 1 issue comment, 1 review
+- Status counts: 14 resolved, 5 candidate, 2 superseded
+- Category counts: 5 query-state, 4 stale persisted intent, 4 context omission,
+  3 preview parity, 1 environment config, 1 insecure randomness, 1 performance,
+  1 render-time side effect, 1 user-input loss
+- New extracted candidate:
+  `failure-pr-96-review_comment-3302336677` (`context_omission`, `resolved`)
+
+Verification:
+
+- `bun test` passed with 117 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+
+Provider note:
+
+- `OPENAI_API_KEY` was not present in the shell, so this external validation
+  stopped at dry-run analysis artifacts and did not produce provider clusters,
+  review decisions, draft rules, rule decisions, or export artifacts.
+
 ## Next Suggested Step
 
-Build candidate review UI polish: filters, search, sorting, and status/evidence
-visibility for the candidate list. Keep it read-only and local-only; the goal is
-to make the tuned candidate set easier to inspect before evidence scoring or
-external repo validation.
+Run provider-backed external validation when an `OPENAI_API_KEY` is available,
+then compare clusters, review decisions, rules, and export counts against this
+EventSnaps dry-run baseline.
 
 ## Update Rules
 
