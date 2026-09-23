@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { extractFailureCandidates, inferStatus } from "../src/extract";
 import { FAILURE_CANDIDATE_CATEGORIES, FAILURE_CANDIDATE_STATUSES } from "../src/types";
 import type { FailureCandidate, FailureCandidateCategory, FailureCandidateStatus, NormalizedPullRequestRecord } from "../src/types";
@@ -45,6 +46,124 @@ export type Prediction = {
   status: FailureCandidateStatus;
   basis: ReturnType<typeof inferStatus>["basis"];
 };
+
+const REVIEW_RUBRIC = {
+  version: 1,
+  rules: [
+    "Proposed rubric for human calibration, not approved ground truth. Decline rubricAccepted if these semantics need revision.",
+    "A finding reports a concrete defect, omission or regression, including a retrospectively described defect. Feature summaries, review boilerplate and generic fix claims alone are not findings.",
+    "Categorize the actual failure, not example tokens. For extractor misclassification, do not label the example's domain as the underlying defect. Use unknown for an out-of-taxonomy finding; null plus an explanation when no single category can be adjudicated.",
+    "Read the assertion, its target and chronology. Quoted negation or examples are not the speaker denying a fix. Later substantive same-thread evidence overrides earlier evidence; unrelated PR discussion and merge state do not supply an outcome.",
+    "Explicit completed-fix claims in the source or same-thread replies may support resolved, but are self-reports, not independently verified correctness. Record source-only versus reply evidence in the note. Proposed or planned fixes alone remain candidate.",
+    "Acknowledgement without completion supports accepted. An explicit rebuttal of the finding supports rejected; continuing disagreement or uncertainty supports contested. Declining a patch is not necessarily rejecting its finding.",
+    "Absent stronger discussion, resolved thread metadata supports resolved and outdated metadata supports superseded. Call these metadata-only outcomes in the note; neither proves a code fix.",
+    "Use candidate for a finding with no supported outcome, and null plus an explanation for genuinely ambiguous status or mixed outcomes. Negative sources require null category and status. A null decision is unanswered, not a negative finding.",
+    "Keep every sampled source, including repeated incidents. Inseparable multiple defects can have null category/status with explanation. This balanced source sample is for rubric calibration, not an unbiased quality benchmark.",
+    "Write only paraphrased rationale in decision.note. Do not paste credentials or private source text. Fill reviewer, reviewedAt (ISO timestamp), rubricAccepted and humanReviewed yourself; software cannot authenticate the attestation.",
+  ],
+  categories: CATEGORIES,
+  statuses: STATUSES,
+} as const;
+
+export type ReviewPacket = {
+  schemaVersion: 1;
+  repo: string;
+  snapshotHash: string;
+  packetId: string;
+  rubric: typeof REVIEW_RUBRIC;
+  sampling: { version: "source-evidence-stratified-v1"; limit: 12; totalSources: number };
+  review: { reviewer: string; reviewedAt: string | null; rubricAccepted: boolean; humanReviewed: boolean };
+  entries: { source: EvalSource; decision: Omit<LabelEntry, "key"> | null }[];
+};
+
+export function buildReviewPacket(repo: string, sources: EvalSource[], snapshotHash: string): ReviewPacket {
+  if (repo !== "traceback-ai" && repo !== "EventSnaps") throw new Error("Review packets are development-only; holdout is excluded.");
+  if (!/^[a-f0-9]{64}$/.test(snapshotHash)) throw new Error("Invalid review snapshot hash");
+  if (!sources.length) throw new Error("Cannot sample an empty corpus");
+  uniqueByKey(sources, "source");
+  const ranked = sources.map((source) => ({
+    source,
+    rank: createHash("sha256").update(JSON.stringify([repo, snapshotHash, source.key])).digest("hex"),
+  })).sort((a, b) => a.rank.localeCompare(b.rank) || a.source.key.localeCompare(b.source.key));
+  const strata = new Map<string, EvalSource[]>();
+  for (const { source } of ranked) {
+    const evidence = source.replies.length ? "replies"
+      : source.threadResolved || source.threadOutdated ? "thread_metadata" : "no_outcome";
+    const key = `${source.sourceType}/${source.body.trim() ? "text" : "empty"}/${evidence}`;
+    const bucket = strata.get(key) ?? [];
+    bucket.push(source);
+    strata.set(key, bucket);
+  }
+  const buckets = [...strata.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, entries]) => entries);
+  const selected: EvalSource[] = [];
+  while (selected.length < Math.min(12, sources.length)) {
+    for (const bucket of buckets) {
+      if (bucket.length && selected.length < 12) selected.push(bucket.shift()!);
+    }
+  }
+  const sampling = { version: "source-evidence-stratified-v1", limit: 12, totalSources: sources.length } as const;
+  const packetId = createHash("sha256").update(JSON.stringify({ repo, snapshotHash, sampling, rubric: REVIEW_RUBRIC, sources: selected })).digest("hex");
+  return {
+    schemaVersion: 1, repo, snapshotHash, packetId, rubric: REVIEW_RUBRIC, sampling,
+    review: { reviewer: "", reviewedAt: null, rubricAccepted: false, humanReviewed: false },
+    entries: selected.map((source) => ({ source: structuredClone(source), decision: null })),
+  };
+}
+
+export function checkReviewPacket(value: unknown, expected: ReviewPacket) {
+  if (!object(value) || value.schemaVersion !== 1 || value.repo !== expected.repo ||
+      value.snapshotHash !== expected.snapshotHash || value.packetId !== expected.packetId ||
+      !isDeepStrictEqual(value.rubric, expected.rubric) || !isDeepStrictEqual(value.sampling, expected.sampling)) {
+    throw new Error("Review packet identity, snapshot, sampler or rubric changed; preserve the original evidence.");
+  }
+  if (!Array.isArray(value.entries) || value.entries.length !== expected.entries.length) {
+    throw new Error("Review packet must retain every sampled source");
+  }
+  const expectedSources = new Map(expected.entries.map(({ source }) => [source.key, source]));
+  const seen = new Set<string>();
+  let answered = 0;
+  for (const entry of value.entries) {
+    if (!object(entry) || !object(entry.source) || typeof entry.source.key !== "string" ||
+        seen.has(entry.source.key) || !isDeepStrictEqual(entry.source, expectedSources.get(entry.source.key))) {
+      throw new Error("Review packet contains duplicate, unknown or edited source evidence");
+    }
+    seen.add(entry.source.key);
+    if (entry.decision === null) continue;
+    if (!object(entry.decision) || typeof entry.decision.note !== "string" || !entry.decision.note.trim()) {
+      throw new Error("Each answered source needs a decision and a paraphrased note");
+    }
+    if (Object.keys(entry.decision).some((key) => !["isFinding", "category", "status", "note"].includes(key))) {
+      throw new Error("Unexpected review decision field");
+    }
+    const label = { ...entry.decision, key: entry.source.key };
+    const file = { repo: expected.repo, labeler: "review validation", labeledAt: "2000-01-01T00:00:00Z", entries: [label] };
+    validateLabels(file, expected.repo);
+    answered++;
+  }
+  const review = value.review;
+  if (!object(review) || typeof review.reviewer !== "string" ||
+      typeof review.rubricAccepted !== "boolean" || typeof review.humanReviewed !== "boolean" ||
+      (review.reviewedAt !== null && (typeof review.reviewedAt !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(review.reviewedAt) ||
+        !Number.isFinite(Date.parse(review.reviewedAt))))) {
+    throw new Error("Invalid reviewer metadata or attestation");
+  }
+  const attested = !!review.reviewer.trim() && review.reviewedAt !== null && review.rubricAccepted && review.humanReviewed;
+  return { answered, pending: expected.entries.length - answered,
+    attested, complete: answered === expected.entries.length && attested };
+}
+
+export async function writeReviewPacket(file: string, packet: ReviewPacket): Promise<void> {
+  await mkdir(path.dirname(file), { recursive: true });
+  try {
+    await writeFile(file, JSON.stringify(packet, null, 2) + "\n", { flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new Error("Review packet already exists; refusing to overwrite review work. Use check-review.");
+    }
+    throw error;
+  }
+}
 
 function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -281,6 +400,26 @@ export async function main(args: string[]): Promise<void> {
   const [command, target, ...flags] = args;
   if (command === "--help") {
     console.log("bun scripts/eval.ts <worksheet|seal|run> <traceback-ai|EventSnaps|task-tracker|--all> [--report]");
+    console.log("bun scripts/eval.ts <review-packet|check-review> <traceback-ai|EventSnaps>");
+    return;
+  }
+  if (command === "review-packet" || command === "check-review") {
+    if (!["traceback-ai", "EventSnaps"].includes(target) || flags.length) {
+      throw new Error("Invalid review arguments: use a development repo only, without flags.");
+    }
+    const corpus = await readCorpus(target);
+    const expected = buildReviewPacket(target, corpus.sources, corpus.snapshotHash);
+    const file = path.join(DATA, "adjudication", `${target}.json`);
+    if (command === "review-packet") {
+      await writeReviewPacket(file, expected);
+      console.log(`${target}: ${expected.entries.length} blank decisions with full evidence in eval/data/adjudication/${target}.json (gitignored). Draft labels and predictions withheld.`);
+    } else {
+      const result = checkReviewPacket(await readJson(file), expected);
+      if (!result.complete) {
+        throw new Error(`Review incomplete: ${result.answered}/${expected.entries.length} answered; ${result.pending} pending; reviewer/rubric/human attestation ${result.attested ? "present" : "missing"}. No labels changed.`);
+      }
+      console.log(`${target}: ${result.answered}/${expected.entries.length} decisions valid with self-attested human review. Authorship is not authenticated; no labels changed or benchmark certified.`);
+    }
     return;
   }
   if (!["worksheet", "seal", "run"].includes(command) || !target ||

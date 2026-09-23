@@ -13,9 +13,11 @@ For broader product direction, read `docs/roadmap.md`.
 Phase 2 evaluation and focused local hardening; not production-ready.
 
 Current status: reproducible provisional evaluation and local safety checks are
-implemented. Human label adjudication, signal-quality improvement, live-provider
-validation and cross-platform release checks remain open. Session capture,
-scoring, write/apply workflows and hosted features remain deferred.
+implemented. Development-only human calibration packets are now prepared with
+24 unanswered sources and validation tooling. Actual human adjudication,
+signal-quality improvement, live-provider validation and cross-platform release
+checks remain open. Session capture, scoring, write/apply workflows and hosted
+features remain deferred.
 
 Completed UI foundation: first UI slice implemented; provider-rich dogfood artifacts available;
 thread-aware outcome/status detection implemented; taxonomy tuning pass from PR
@@ -585,11 +587,44 @@ Remaining release gates:
    distribution. Full historical-artifact schemas remain incomplete; filesystem
    checks are not atomic or a sandbox against hostile local software/hardlinks.
 
+## 2026-09-23 Human Calibration Packet Slice
+
+Branch: `feat/evaluation-adjudication`, following the hardening merge pushed to
+`main` as `3a42ccf`.
+
+- `scripts/eval.ts` adds `review-packet <development-repo>` and
+  `check-review <development-repo>`. The first creates up to 12 full-text,
+  snapshot-bound sources with a proposed versioned rubric and blank decisions;
+  the second validates immutable evidence, sample identity, response fields and
+  explicit reviewer/rubric/human attestations without promoting labels.
+- Sampler uses source type, empty/text body and raw reply/thread-flag availability,
+  never predictions or draft labels. Balanced strata are for rubric calibration,
+  not population accuracy estimates. `task-tracker`, `--all` and extra flags are
+  rejected. Existing packets are never overwritten.
+- Private packets are ready at `eval/data/adjudication/traceback-ai.json` and
+  `eval/data/adjudication/EventSnaps.json`, 12 items each, all unanswered. Both
+  paths are gitignored. No labels, holdout data or extractor heuristics changed.
+- Proposed rubric explicitly distinguishes self-reported source/reply completion
+  from independently verified code fixes; this remains a human decision, not a
+  semantic change made to improve the score. `eval/README.md` explains how to
+  review, express ambiguity, attest and check without editing evidence.
+- Verification: 412 tests passed; typecheck/build and diff checks passed. Synthetic
+  isolated CLI test covers generation, incomplete checks, completed test responses,
+  refusal to overwrite, snapshot drift, sanitized errors and unchanged labels.
+  Real packet generation succeeded; both real checks returned expected exit 1
+  with 0/12 answered and missing attestations. Independent code review found no
+  high-confidence issues. No frontend change or browser check needed this slice.
+- Human authorship cannot be authenticated by the checker. No actual human
+  adjudication, promotion, new baseline, provider call, upload, commit or push
+  occurred in this slice; QMD was not rerun.
+
 ## Next Suggested Step
 
-Adjudicate a representative development-set sample and the label rubric before
-further heuristic tuning. Keep Phase 2 open until quality and useful-rule gates
-are met; do not advance to session capture merely because tests pass.
+Review the proposed rubric and both private packets locally, fill only decisions
+and reviewer metadata, then run the documented check commands. Reconcile human
+judgements with draft labels explicitly before promotion or heuristic tuning;
+no automated ground-truth approval is provided. Keep Phase 2 open until quality
+and useful-rule gates are met.
 
 ## Update Rules
 
