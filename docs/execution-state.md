@@ -1,6 +1,6 @@
 # Traceback Execution State
 
-Last updated: 2026-05-26
+Last updated: 2026-09-23
 
 Read this file first in future sessions. It is the living operational tracker for
 what to build next, what is out of scope, and what must be updated after work is
@@ -10,14 +10,23 @@ For broader product direction, read `docs/roadmap.md`.
 
 ## Current Milestone
 
-Tiny local read-only review UI.
+Phase 2 evaluation and focused local hardening; not production-ready.
 
-Status: first UI slice implemented; provider-rich dogfood artifacts available;
+Current status: reproducible provisional evaluation and local safety checks are
+implemented. Human label adjudication, signal-quality improvement, live-provider
+validation and cross-platform release checks remain open. Session capture,
+scoring, write/apply workflows and hosted features remain deferred.
+
+Completed UI foundation: first UI slice implemented; provider-rich dogfood artifacts available;
 thread-aware outcome/status detection implemented; taxonomy tuning pass from PR
 #11 completed; rule/export artifacts now separate repo-specific agent guidance
 from broader engineering and process learnings; candidate review UI now has
 read-only search, filters, sorting, and clearer status/evidence visibility; first
-richer external dry-run validation completed against EventSnaps.
+richer external dry-run validation completed against EventSnaps; 2026-09-21
+inspection slice made run selection provider-first, labeled current-corpus vs
+selected-run data, blocked impossible pipeline commands, projected learning
+scope, and attributed status evidence through the shared `inferStatus`
+provenance function with hardened acknowledgement heuristics.
 
 ## Why This Is Next
 
@@ -452,11 +461,135 @@ Provider note:
   stopped at dry-run analysis artifacts and did not produce provider clusters,
   review decisions, draft rules, rule decisions, or export artifacts.
 
+## 2026-09-21 Inspection And Evidence Attribution Slice
+
+Changed:
+
+- `src/ui.ts`: `defaultRunId` prefers the latest provider run with response and
+  parsed analysis output, falling back to the latest run; run picker with
+  readable mode/provider/count labels plus exact run IDs; older-run notice;
+  pipeline stages show blocked prerequisites instead of runnable commands and
+  state that provider analysis sends current candidates and creates a new run;
+  draft rules project `learningScope` with explicit `unknown`; candidate status
+  evidence now comes from shared `inferStatus` provenance (basis, matching
+  reply, stored-status mismatch guidance); data-URI favicon removes a 404.
+- `src/extract.ts`: exported `inferStatus` returning `{status, basis,
+  replyIndex}`; replies sorted chronologically before inference; negated,
+  pending, and question replies no longer confirm outcomes; neutral tokens such
+  as "valid JSON" and "fixed-width" no longer acknowledge; metadata-only
+  resolved/outdated fallback preserved.
+- `tests/ui.test.ts` and `tests/extract.test.ts`: vm-rendered UI regression
+  tests and a positive/negative status fixture matrix.
+- `docs/improvement-plan.md` added; `docs/roadmap.md` Phase 3 reordered to put
+  held-out evaluation before evidence scoring and to require explicit
+  data-sharing approval for provider-backed validation.
+
+Verification:
+
+- `bun test` passed with 237 tests.
+- `bun run check` passed.
+- `bun run build` passed.
+- Browser smoke on `http://127.0.0.1:4399/` in an isolated context: default
+  selected run is provider run `2026-05-23T12-02-59Z` with an older-run notice;
+  clusters (6) and review decisions (6) render; search, status filter, sort,
+  reset, and no-match empty state work; learning scope renders in Rules &
+  exports; no console errors or warnings; no horizontal overflow at desktop or
+  500px width. A mobile visual screenshot was inconclusive because unrelated
+  shared-browser tabs kept taking focus; layout metrics were verified by script.
+
+Risks:
+
+- Review subagents were interrupted by a credit limit; the main agent reviewed
+  the diff inline instead.
+- Status/category heuristics remain deterministic English pattern matching.
+  The evaluation-set gap was addressed provisionally on 2026-09-23 below;
+  independent human adjudication is still required.
+
+## 2026-09-23 Evaluation And Local Hardening
+
+Changed:
+
+- `scripts/eval.ts`, `tests/eval.test.ts`: full-text prediction-blind worksheets,
+  strict label/corpus validation and complete coverage, snapshot binding,
+  label/extractor hashes, null-label denominator exclusions, N/A empty metrics,
+  and separate detection/category/status reporting. Labels are read once for
+  both scoring and hashing.
+- `eval/labels/`: 473 top-level sources across Traceback (223), EventSnaps (163),
+  and task-tracker (87). Agent-reviewed drafts only, pending human adjudication.
+  Earlier prediction-exposed holdout labels are preserved locally; blind
+  relabeling does not erase that history. No holdout tuning occurred.
+- Private raw records, worksheets and previous label drafts stay in gitignored
+  `eval/data/`; reports contain aggregates and source IDs, not private text.
+- `src/analyze.ts`, `src/types.ts`, `tests/analyze.test.ts`: validate persisted
+  candidate schemas, IDs, duplicates, enums, URLs and field types before provider
+  calls. Array/object/null confidence regressions are covered.
+- `src/ui.ts`, `tests/ui.test.ts`: loopback-only binding, Host/Origin/method
+  checks, safe artifact paths and basenames, symlink rejection, inert unsafe
+  links, sanitized JSON errors and visible partial analysis artifacts. Fixed
+  mobile candidate overflow with shrinkable grid tracks and wrapping content;
+  stacked layout now also covers tablet widths.
+- `tests/cli-smoke.test.ts`: fresh-repository bundled CLI workflow through
+  review/rules/export with a local synthetic provider, verifying root AGENTS
+  remains unchanged. `package.json` allows only bundle/README in the package;
+  `tsconfig.json` now checks scripts too. README separates source-checkout and
+  target-repository usage and makes optional provider upload explicit.
+
+Provisional baseline (`eval/reports/baseline-all-1790134302423.md`):
+
+| Repo | Precision | Recall | Category accuracy | Status accuracy |
+| --- | ---: | ---: | ---: | ---: |
+| Traceback | 100% | 65.1% | 25.4% | 98.6% |
+| EventSnaps | 96.8% | 53.6% | 32.1% | 63.3% |
+| task-tracker holdout | 85% | 50% | 35.3% | 100% |
+
+Category/status accuracy is conditional on detected findings; unknown labels
+are excluded. The holdout has no explicit-reply examples, and resolved thread
+metadata is not independent code-correctness evidence. Counts are per source,
+not deduplicated incident. EventSnaps self-reported fixes versus reply-confirmed
+resolution need rubric adjudication before interpreting its status score.
+Extractor unchanged during this hardening/baseline slice.
+
+Verification:
+
+- `bun test`: 378 passed, 0 failed; `bun run check` and `bun run build` passed.
+- Evaluator help, worksheet, seal and run/report commands passed with full
+  coverage and matching hashes. Hermetic tests do not need private snapshots.
+- Restarted source UI and verified the correct isolated browser tab at 320,
+  390, 768, 1024 and 1440px: all five tabs fit without horizontal overflow.
+  Mobile/desktop screenshots inspected; search narrowed 70 to 11 candidates,
+  combined filter/sort worked, no-match showed zero, reset restored 70, and
+  dry/provider run switching and learning scopes rendered. No console errors
+  or warnings; page and state API requests returned 200, with no external
+  requests. The earlier 500px-only check had missed a real 390px overflow.
+- Independent final code review found no further actionable bugs and passed
+  170 focused tests after the confidence/hash fixes.
+- Fresh copied checkout: frozen-lockfile install from cache and build passed
+  with network denied. Portable npm tarball contained exactly `README.md`,
+  `dist/cli.js`, `package.json`; executable mode/shebang, help/version and init
+  worked in a separate empty git repo. This is not an installed-package test.
+- No live provider call, evidence upload, publication, commit, push, root
+  instruction edit or heuristic tuning was performed in this hardening slice.
+- Verified environment: macOS arm64, Bun 1.3.6. Other platforms remain unverified.
+
+Remaining release gates:
+
+1. Human-adjudicate annotations and rubric ambiguities (source-body fixes,
+   semantic rebuttals, quoted negation, repeated/multi-defect sources), then
+   freeze an independently reviewed holdout. Current reports are diagnostic,
+   not acceptance evidence.
+2. Improve recall/category semantics on development sets with whole-family
+   positive/negative fixtures; do not tune on task-tracker errors or rush scores.
+3. Run live provider-backed external validation only with explicit approval to
+   share evidence and an ephemeral API key; measure useful rules, not counts.
+4. Verify supported platforms and installed-package onboarding before wider
+   distribution. Full historical-artifact schemas remain incomplete; filesystem
+   checks are not atomic or a sandbox against hostile local software/hardlinks.
+
 ## Next Suggested Step
 
-Run provider-backed external validation when an `OPENAI_API_KEY` is available,
-then compare clusters, review decisions, rules, and export counts against this
-EventSnaps dry-run baseline.
+Adjudicate a representative development-set sample and the label rubric before
+further heuristic tuning. Keep Phase 2 open until quality and useful-rule gates
+are met; do not advance to session capture merely because tests pass.
 
 ## Update Rules
 

@@ -139,38 +139,23 @@ export type CandidateAgentMarker = {
 
 export type FailureCandidateSourceType = "review_comment" | "issue_comment" | "review" | "pr_body";
 
-export type FailureCandidateCategory =
-  | "security_privacy_regression"
-  | "environment_config_contract_violation"
-  | "preview_output_parity_failure"
-  | "query_state_preservation_failure"
-  | "stale_persisted_intent"
-  | "user_input_loss"
-  | "lifecycle_ordering_bug"
-  | "render_time_side_effect"
-  | "insecure_randomness"
-  | "performance_regression"
-  | "parser_permissiveness"
-  | "overbroad_change"
-  | "context_omission"
-  | "human_editable_artifact_validation"
-  | "identifier_collision_record_loss"
-  | "status_inference_error"
-  | "pagination_boundary_error"
-  | "unknown";
+export const FAILURE_CANDIDATE_CATEGORIES = [
+  "security_privacy_regression", "environment_config_contract_violation", "preview_output_parity_failure",
+  "query_state_preservation_failure", "stale_persisted_intent", "user_input_loss", "lifecycle_ordering_bug",
+  "render_time_side_effect", "insecure_randomness", "performance_regression", "parser_permissiveness",
+  "overbroad_change", "context_omission", "human_editable_artifact_validation", "identifier_collision_record_loss",
+  "status_inference_error", "pagination_boundary_error", "unknown",
+] as const;
+export type FailureCandidateCategory = typeof FAILURE_CANDIDATE_CATEGORIES[number];
 
 export type FailureCandidateSeverity = "low" | "medium" | "high";
 
 export type FailureCandidateConfidence = "low" | "medium" | "high";
 
-export type FailureCandidateStatus =
-  | "candidate"
-  | "accepted"
-  | "rejected"
-  | "contested"
-  | "resolved"
-  | "superseded"
-  | "unknown";
+export const FAILURE_CANDIDATE_STATUSES = [
+  "candidate", "accepted", "rejected", "contested", "resolved", "superseded", "unknown",
+] as const;
+export type FailureCandidateStatus = typeof FAILURE_CANDIDATE_STATUSES[number];
 
 export type FailureCandidate = {
   schemaVersion: 1;

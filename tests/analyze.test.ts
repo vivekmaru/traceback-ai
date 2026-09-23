@@ -11,6 +11,42 @@ import {
 import type { FailureCandidate } from "../src/types";
 
 describe("runAnalysis", () => {
+  test.each([
+    { schemaVersion: 2 }, { status: "fixed" }, { candidateCategory: "invented" },
+    { sourcePrNumber: 999 }, { sourceType: "other" }, { evidenceExcerpt: null },
+    { detectedAgentMarkers: "codex" }, { notes: {} }, { confidence: "certain" },
+    { confidence: ["high"] }, { confidence: null }, { confidence: { value: "high" } },
+    { sourcePrUrl: "javascript:alert(1)" }, { updatedAt: "yesterday" },
+  ])("rejects malformed persisted candidates before calling providers: %j", async (fields) => {
+    const repoRoot = await repoWithFailures([candidate("failure-pr-42-review_comment-7")]);
+    let calls = 0;
+    try {
+      await writeFile(path.join(repoRoot, ".traceback/records/failures/failure-pr-42-review_comment-7.json"),
+        JSON.stringify({ ...candidate("failure-pr-42-review_comment-7"), ...fields }));
+      await expect(runAnalysis(repoRoot, { mode: "provider", provider: "openai", providerClient: async () => {
+        calls++; throw new Error("Must not call provider");
+      } })).rejects.toThrow("Invalid failure candidate");
+      expect(calls).toBe(0);
+    } finally { await rm(repoRoot, { recursive: true, force: true }); }
+  });
+
+  test("rejects duplicate candidate IDs instead of mixing evidence", async () => {
+    const value = candidate("failure-pr-42-review_comment-7");
+    const repoRoot = await repoWithFailures([value]);
+    try {
+      await writeFile(path.join(repoRoot, ".traceback/records/failures/duplicate.json"), JSON.stringify(value));
+      await expect(runAnalysis(repoRoot, { mode: "dry-run" })).rejects.toThrow("Duplicate candidate ID");
+    } finally { await rm(repoRoot, { recursive: true, force: true }); }
+  });
+
+  test("identifies malformed JSON without echoing its potentially private contents", async () => {
+    const repoRoot = await repoWithFailures([candidate("failure-pr-42-review_comment-7")]);
+    try {
+      await writeFile(path.join(repoRoot, ".traceback/records/failures/invalid.json"), "private-token-broken-json");
+      await expect(runAnalysis(repoRoot, { mode: "dry-run" })).rejects.toThrow("Invalid candidate JSON: invalid.json");
+    } finally { await rm(repoRoot, { recursive: true, force: true }); }
+  });
+
   test("writes dry-run analysis artifacts without calling a provider", async () => {
     const repoRoot = await repoWithFailures([candidate("failure-pr-42-review_comment-7")]);
     let providerCalls = 0;
@@ -443,7 +479,7 @@ async function repoWithFailures(candidates: FailureCandidate[]): Promise<string>
 }
 
 function candidate(id: string): FailureCandidate {
-  const prNumber = id.includes("pr-41") ? 41 : 42;
+  const prNumber = Number(id.match(/^failure-pr-(\d+)-/)?.[1]);
   return {
     schemaVersion: 1,
     id,

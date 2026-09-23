@@ -1,0 +1,618 @@
+{
+  "repo": "task-tracker",
+  "labeledAt": "2026-09-23T02:58:15.255Z",
+  "labeler": "blind agent review; pending human adjudication",
+  "entries": [
+    {
+      "key": "pr_body:50",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Feature and verification summary; no concrete defect described."
+    },
+    {
+      "key": "review_comment:3302478380",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Primary navigation targets an invalid detail route instead of a list. No precise taxonomy fit; thread metadata marks resolved."
+    },
+    {
+      "key": "review:4362149948",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate without an independent finding."
+    },
+    {
+      "key": "pr_body:51",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "New triage surfaces and verification, not an identified existing defect."
+    },
+    {
+      "key": "pr_body:52",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Lifecycle feature summary and smoke test; no concrete failure asserted."
+    },
+    {
+      "key": "review_comment:3303097297",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Unknown endpoints receive a wrong-method response instead of not-found. HTTP mapping, not outcome inference; resolved thread metadata."
+    },
+    {
+      "key": "review_comment:3303097303",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "The interface ignores existing transition eligibility rules and offers actions that fail. Resolved thread metadata takes precedence over outdated metadata."
+    },
+    {
+      "key": "review_comment:3303097314",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Mutable client identity fields permit forged audit attribution. Thread metadata marks resolved."
+    },
+    {
+      "key": "review_comment:3303097323",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Missing resources incorrectly produce server errors. No precise error-mapping category; thread metadata marks resolved."
+    },
+    {
+      "key": "review:4362897130",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate without an independent finding."
+    },
+    {
+      "key": "pr_body:53",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Queue display feature summary without a concrete defect."
+    },
+    {
+      "key": "issue_comment:4543696578",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review request only."
+    },
+    {
+      "key": "issue_comment:4543714103",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "No-findings acknowledgement and review boilerplate."
+    },
+    {
+      "key": "pr_body:54",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Command additions and verification without a concrete failure."
+    },
+    {
+      "key": "pr_body:55",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Worker execution feature summary without an identified defect."
+    },
+    {
+      "key": "review_comment:3303432973",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Normal cancellation during work is reported as a process failure. Shutdown error handling is not outcome inference; resolved thread metadata."
+    },
+    {
+      "key": "review_comment:3303432976",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "The runner ignores an advertised concurrency setting, preventing configured scaling. Thread metadata marks resolved."
+    },
+    {
+      "key": "review_comment:3303497487",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Cancellation during initialization produces an erroneous failure exit. No precise taxonomy fit; thread metadata marks resolved."
+    },
+    {
+      "key": "review_comment:3303497493",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "resolved",
+      "note": "Signal handling resets only after cleanup, swallowing repeated termination signals during a hang. Thread metadata marks resolved."
+    },
+    {
+      "key": "review:4363324047",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate without an independent finding."
+    },
+    {
+      "key": "review:4363401278",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate without an independent finding."
+    },
+    {
+      "key": "pr_body:56",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Subscription management convenience features and verification; no concrete defect."
+    },
+    {
+      "key": "pr_body:57",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "New endpoint and validation summary; no specific existing failure described."
+    },
+    {
+      "key": "review_comment:3303942639",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "Omitted filters violate documented default behavior by becoming a prohibited database null. Thread metadata marks resolved."
+    },
+    {
+      "key": "review_comment:3303942658",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Invalid resource references are reported as server failures, misleading clients. HTTP error mapping lacks a precise category; resolved thread metadata."
+    },
+    {
+      "key": "review_comment:3303942668",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "Explicit zero is mistaken for omission, bypassing the existing retry validation contract. Thread metadata marks resolved."
+    },
+    {
+      "key": "review_comment:3307485692",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "The API omits established filter normalization, creating subscriptions that silently miss events. Thread metadata marks resolved."
+    },
+    {
+      "key": "review_comment:3307485697",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "Creation ignores the supported event contract and accepts filters that can never match. Thread metadata marks resolved."
+    },
+    {
+      "key": "review:4363929938",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate without an independent finding."
+    },
+    {
+      "key": "review:4368258398",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate without an independent finding."
+    },
+    {
+      "key": "pr_body:58",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "candidate",
+      "note": "Hint text incorrectly becomes editable input content. No lost work or precise category; proposed repair has no source-local outcome confirmation."
+    },
+    {
+      "key": "issue_comment:4569489233",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:4949314365",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Administrative supersession notice without a new defect."
+    },
+    {
+      "key": "pr_body:59",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "candidate",
+      "note": "Borderline safety finding: irreversible deletion lacked confirmation. No actual loss is claimed; proposed safeguard has no source-local outcome confirmation."
+    },
+    {
+      "key": "issue_comment:4627228876",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:60",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "A specific unindexed history lookup incurs slow full scans. Proposed optimization only; duplicate closure elsewhere does not resolve this source."
+    },
+    {
+      "key": "issue_comment:4655643486",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:4949308726",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Administrative duplicate closure; no distinct code defect stated."
+    },
+    {
+      "key": "issue_comment:4949309625",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Clarifies the duplicate implementation without identifying a new failure."
+    },
+    {
+      "key": "pr_body:61",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "candidate",
+      "note": "Incorrect input attribute assignment makes users erase guidance before entering text. No lost work; proposed correction is not confirmed within this source."
+    },
+    {
+      "key": "issue_comment:4686357622",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:4949314268",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Administrative supersession notice without a new defect."
+    },
+    {
+      "key": "pr_body:62",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "Changed event ordering lacks matching indexes and incurs expensive sorts. Proposed repair only; separate supersession notices are not source-local outcomes."
+    },
+    {
+      "key": "issue_comment:4714450255",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:4949308640",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Administrative supersession notice without a new finding."
+    },
+    {
+      "key": "issue_comment:4949309571",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Repeats supersession details without an independent defect."
+    },
+    {
+      "key": "pr_body:63",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Client-side validation enhancement; no concrete defect in existing behavior established by this source."
+    },
+    {
+      "key": "issue_comment:4747335318",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:4949314929",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "candidate",
+      "note": "Mandatory web input contradicts the intentionally optional service contract. Rejection concerns the patch, not dismissal of the finding; no source-local fix."
+    },
+    {
+      "key": "pr_body:64",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "candidate",
+      "note": "Guidance incorrectly prepopulates a reason field, obstructing entry without losing work. Proposed repair only; merging does not confirm the finding outcome."
+    },
+    {
+      "key": "issue_comment:4805569185",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:65",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "A changed history sort lacks supporting indexes and incurs unnecessary sorting. Proposed repair only; no source-local confirmation."
+    },
+    {
+      "key": "issue_comment:4839447680",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:4949308567",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Borderline: closure cites an unused extra index, but establishes no concrete harmful outcome or performance cost."
+    },
+    {
+      "key": "issue_comment:4949309511",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Borderline: clarifies the unused extra index during supersession, without establishing a concrete defect or cost."
+    },
+    {
+      "key": "pr_body:66",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Visual interaction polish; no broken operation, specific accessibility contract, or concrete unsafe outcome established."
+    },
+    {
+      "key": "issue_comment:4871698589",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:67",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "Missing indexes after an ordering change degrade history retrieval. Verification is proposed, not reported; merge metadata does not resolve the finding."
+    },
+    {
+      "key": "issue_comment:4899600756",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:68",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "candidate",
+      "note": "Mis-scoped styling omits keyboard focus indicators from existing inputs. This concrete accessibility defect lacks a precise category; proposed repair only."
+    },
+    {
+      "key": "issue_comment:4997902283",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:69",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": null,
+      "note": "Concrete CI database setup failure is reported fixed and tested, while a layout defect remains unchecked. Mixed source-level outcomes make one status ambiguous."
+    },
+    {
+      "key": "pr_body:70",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "A missing composite index forces extra timeline sorting and CPU work. Proposed optimization lacks source-local verification of resolution."
+    },
+    {
+      "key": "issue_comment:5029635747",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:71",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Additional input hints are a usability enhancement, not an established incorrect outcome or lost input."
+    },
+    {
+      "key": "issue_comment:5064966109",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:72",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "A specific history query repeatedly sorts because its index lacks the ordering column. Concrete performance mechanism; claimed improvement is not verified here."
+    },
+    {
+      "key": "issue_comment:5099353602",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:73",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Describes preventive interface safeguards, not a concrete existing failure or demonstrated loss. Separate comments are not evidence for this source."
+    },
+    {
+      "key": "issue_comment:5138082825",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:5161936355",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "candidate",
+      "note": "A required-input policy is enforced only in the browser, allowing direct callers to bypass it. Separate issue-comment fix claims do not resolve this source."
+    },
+    {
+      "key": "issue_comment:5161996386",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Quotes an existing finding and acknowledges its fix with tests; no distinct new defect. Test adaptation is part of that same correction."
+    },
+    {
+      "key": "pr_body:74",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "Existing indexing fails to support a concrete timeline ordering query. Scaling impact is projected rather than measured; proposed repair only."
+    },
+    {
+      "key": "issue_comment:5174119478",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:75",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "A specific scoped listing lacks an index and requires full scans. Scaling impact is projected, but the performance mechanism is concrete; proposed repair only."
+    },
+    {
+      "key": "issue_comment:5248479059",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:76",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "A single-column index leaves unnecessary sorting in a specific history query. Estimated speedup is not measurement or source-local resolution."
+    },
+    {
+      "key": "issue_comment:5404460057",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "pr_body:77",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "Existing history retrieval incurs avoidable in-memory sorting and CPU overhead. Verification remains proposed; merging alone does not establish resolution."
+    },
+    {
+      "key": "issue_comment:5488105705",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:5488107668",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity metadata and boilerplate; no substantive security finding."
+    },
+    {
+      "key": "pr_body:78",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Scoped listing incurs full scans and sorting. This body explicitly reports measured replacement by an indexed plan, providing source-local fix evidence."
+    },
+    {
+      "key": "issue_comment:5578515674",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:5578517646",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity metadata and boilerplate; no substantive security finding."
+    },
+    {
+      "key": "pr_body:79",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "Several concrete scoped queries incur scans and sorting from missing composite indexes. Verification is suggested rather than reported."
+    },
+    {
+      "key": "issue_comment:5674122787",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions, not a finding."
+    },
+    {
+      "key": "issue_comment:5674124542",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity metadata and boilerplate; no substantive security finding."
+    }
+  ],
+  "schemaVersion": 1,
+  "snapshotHash": "7b004d78d8732251a87e9cb9d56ab49edf422f36e3bd99d015eeceb946f9ff01"
+}

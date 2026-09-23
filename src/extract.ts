@@ -20,7 +20,13 @@ type SourceItem = {
   inReplyToId: number | null;
 };
 
-type StatusThread = Pick<NormalizedReviewThread, "isResolved" | "isOutdated">;
+export type StatusThread = Pick<NormalizedReviewThread, "isResolved" | "isOutdated">;
+
+export type StatusInference = {
+  status: FailureCandidateStatus;
+  basis: "reply" | "thread_resolved" | "thread_outdated" | "source" | "none";
+  replyIndex: number | null;
+};
 
 const FAILURE_CUE_PATTERNS: RegExp[] = [
   /\bbug\b/i,
@@ -398,38 +404,38 @@ const CATEGORY_PATTERNS: Array<{
   },
 ];
 
-const RESOLVED_PATTERNS = [/\bfixed\b/i, /\baddressed in\b/i, /\bresolved\b/i];
+// Match completion statements, not adjectives such as "fixed-width" or "valid JSON".
+const RESOLVED_PATTERNS = [
+  /(?:^|[.!?,;\n])\s*(?:(?:i|we)(?:['’]ve| have)?\s+)?(?:(?:now|just|already)\s+)?(?:fixed|resolved)(?=$|[.!?,;]|\s+(?:in|with|by|as|this|that|it|the|now)\b)/i,
+  /\b(?:this|that|it|the (?:issue|bug|problem|finding))\s+(?:is|was|has been)\s+(?:now\s+)?(?:fixed|resolved)(?=$|[.!?,;]|\s+(?:in|with|by|as|now)\b)/i,
+  /(?:^|[.!?,;\n])\s*(?:(?:i|we)(?:['’]ve| have)?\s+)?(?:now\s+)?addressed in\b/i,
+];
 const REQUESTED_FIX_PATTERNS = [
-  /\badded\b.{0,80}\b(?:as requested|requested|null check|guard|validation|handling|test|coverage)\b/i,
+  /(?:^|[.!?,;\n])\s*(?:(?:i|we)(?:['’]ve| have)?\s+)?(?:(?:now|just|already)\s+)?added\s+(?:(?:the|a|an|requested|missing)\s+){0,2}(?:null checks?|guards?|validation|(?:error )?handling|(?:regression )?tests?|coverage)\b/i,
+  /(?:^|[.!?,;\n])\s*(?:(?:i|we)(?:['’]ve| have)?\s+)?(?:now\s+)?added\s+[^.!?;\n]{1,80}\bas requested\b/i,
 ];
-const NEGATED_RESOLUTION_PATTERNS = [
-  /\bnot\s+(?:fixed|addressed|resolved)\b/i,
-  /\bwasn['’]?t\s+(?:fixed|addressed|resolved)\b/i,
-  /\bisn['’]?t\s+(?:fixed|addressed|resolved)\b/i,
-  /\bnever\s+(?:fixed|addressed|resolved)\b/i,
-  /\b(?:fixed|addressed|resolved)\s+yet\b/i,
+const NEGATED_OUTCOME_PATTERNS = [
+  /\b(?:not|never|haven['’]?t|hasn['’]?t|hadn['’]?t|wasn['’]?t|isn['’]?t|aren['’]?t|weren['’]?t|didn['’]?t|don['’]?t|won['’]?t|wouldn['’]?t|couldn['’]?t|can['’]?t|cannot)\s+(?:(?:yet|be|have|been|actually|fully|really|even|now|completely)\s+){0,3}(?:fix(?:ed)?|address(?:ed)?|resolv(?:e|ed)|add(?:ed)?|done|agree(?:d)?)(?![\w-])/i,
+  /\b(?:not|never|isn['’]?t|wasn['’]?t)\s+(?:(?:really|actually)\s+)?(?:a\s+)?good catch\b/i,
+  /\b(?:not|never|hasn['’]?t|haven['’]?t|isn['’]?t|wasn['’]?t)\s+(?:(?:yet|really|actually|been)\s+){0,2}valid(?: (?:point|concern|finding|issue))?(?=$|[.!?,;]|\s+(?:and|but)\b)/i,
+  /\byou (?:are not|aren['’]?t|were not|weren['’]?t) right\b/i,
 ];
-const NEGATED_ACCEPTANCE_PATTERNS = [
-  /\bnot\s+(?:done|agreed)\b/i,
-  /\bwasn['’]?t\s+(?:done|valid|agreed)\b/i,
-  /\bisn['’]?t\s+(?:done|valid|agreed)\b/i,
-  /\bnever\s+(?:done|valid|agreed)\b/i,
-  /\b(?:done|valid|agreed)\s+yet\b/i,
+// Intent is meaningful thread evidence, but it is not a completed fix.
+const PENDING_OUTCOME_PATTERNS = [
+  /\b(?:will|would|could|should|may|might|must|can|(?:i|we|it|this|that)['’]ll)\s+(?:(?:you|we)\s+)?(?:(?:be|have|been|now|soon|also|probably|already)\s+){0,3}(?:fix(?:ed)?|address(?:ed)?|resolv(?:e|ed)|add(?:ed)?|done|agree(?:d)?)(?![\w-])/i,
+  /\b(?:going|plan(?:ning)?|intend(?:ing)?|need|want|hope)\s+to\s+(?:fix|address|resolve|add|agree)\b/i,
 ];
 const ACCEPTED_PATTERNS = [
-  /\bgood catch\b/i,
-  /\bvalid\b/i,
-  /\baddressed\b/i,
-  /\bdone\b/i,
-  /\bagreed\b/i,
-  /\byou are right\b/i,
-  /\bthis is valid\b/i,
+  /(?:^|[.!?,;\n])\s*good catch\b/i,
+  /(?:^|[.!?,;\n])\s*(?:this is (?:a )?|that is (?:a )?|it is (?:a )?)?valid(?: (?:point|concern|finding|issue))?(?=$|[.!?,;]|\s+(?:and|but)\b)/i,
+  /\b(?:your|the) (?:point|concern|finding|issue) is valid(?=$|[.!?,;]|\s+(?:and|but)\b)/i,
+  /(?:^|[.!?,;\n])\s*(?:addressed|done|agreed)(?=$|[.!?,;]|\s+(?:this|that|it|in|with|on)\b)/i,
+  /(?:^|[.!?,;\n])\s*i agree(?=$|[.!?,;]|\s+with\b)/i,
+  /(?:^|[.!?,;\n])\s*you(?: are|['’]re) right\b/i,
 ];
 const REJECTED_PATTERNS = [
   /\bdisagree\b/i,
-  /\bnot valid\b/i,
-  /\bisn['’]?t valid\b/i,
-  /\bwasn['’]?t valid\b/i,
+  /\b(?:not|isn['’]?t|wasn['’]?t) (?:a )?valid(?: (?:point|concern|finding|issue))?(?=$|[.!?,;]|\s+(?:and|but)\b)/i,
   /\bfalse positive\b/i,
   /\bleaving as-is\b/i,
   /\bleaving as is\b/i,
@@ -444,6 +450,12 @@ const CONTESTED_PATTERNS = [
   /\bI think\b/i,
   /\bcan you confirm\b/i,
   /\bnot sure\b/i,
+  /\b(?:maybe|perhaps|possibly|probably|likely|seems?|appears?)\b.{0,80}\b(?:fixed|resolved|addressed|done)(?![\w-])/i,
+];
+const QUESTION_OUTCOME_PATTERNS = [
+  /\b(?:fixed|resolved|addressed|done|agreed|good catch)(?![\w-])/i,
+  /\badded\s+(?:(?:the|a|an|requested|missing)\s+){0,2}(?:null checks?|guards?|validation|(?:error )?handling|(?:regression )?tests?|coverage)\b/i,
+  /\b(?:is|was) (?:this|that|it) (?:a )?valid(?: (?:point|concern|finding|issue))?\s*\?/i,
 ];
 
 export function extractFailureCandidates(records: NormalizedPullRequestRecord[]): FailureCandidate[] {
@@ -485,38 +497,62 @@ export function detectStatus(
   nearbyReplies: string[],
   reviewThread: StatusThread | null = null,
 ): FailureCandidateStatus {
-  const repliesNewestFirst = [...nearbyReplies].reverse();
+  return inferStatus(sourceBody, nearbyReplies, reviewThread).status;
+}
 
-  for (const replyText of repliesNewestFirst) {
-    if (matchesAny(replyText, REJECTED_PATTERNS)) {
-      return "rejected";
-    }
-    if (
-      matchesAny(replyText, NEGATED_RESOLUTION_PATTERNS) ||
-      matchesAny(replyText, NEGATED_ACCEPTANCE_PATTERNS)
-    ) {
-      return "candidate";
-    }
-    if (matchesAny(replyText, RESOLVED_PATTERNS) || matchesAny(replyText, REQUESTED_FIX_PATTERNS)) {
-      return "resolved";
-    }
-    if (matchesAny(replyText, ACCEPTED_PATTERNS)) {
-      return "accepted";
-    }
-    if (matchesAny(replyText, CONTESTED_PATTERNS)) {
-      return "contested";
+/** Replies must be chronological; replyIndex refers to that original input array. */
+export function inferStatus(
+  sourceBody: string,
+  nearbyReplies: string[],
+  reviewThread: StatusThread | null = null,
+): StatusInference {
+  for (let replyIndex = nearbyReplies.length - 1; replyIndex >= 0; replyIndex--) {
+    const status = inferReplyStatus(nearbyReplies[replyIndex].trim());
+    if (status !== null) {
+      return { status, basis: "reply", replyIndex };
     }
   }
   if (reviewThread?.isResolved) {
-    return "resolved";
+    return { status: "resolved", basis: "thread_resolved", replyIndex: null };
   }
-  if (matchesAny(`${sourceBody}\n${nearbyReplies.join("\n")}`, CONTESTED_PATTERNS)) {
-    return "contested";
+  if (matchesAny(sourceBody, CONTESTED_PATTERNS)) {
+    return { status: "contested", basis: "source", replyIndex: null };
   }
   if (reviewThread?.isOutdated) {
-    return "superseded";
+    return { status: "superseded", basis: "thread_outdated", replyIndex: null };
   }
-  return "candidate";
+  return { status: "candidate", basis: "none", replyIndex: null };
+}
+
+function inferReplyStatus(replyText: string): FailureCandidateStatus | null {
+  // Questions and uncertainty are not confirmations, even if they mention a fix.
+  if (
+    matchesAny(replyText, CONTESTED_PATTERNS) ||
+    (replyText.includes("?") &&
+      (matchesAny(replyText, QUESTION_OUTCOME_PATTERNS) ||
+        matchesAny(replyText, REQUESTED_FIX_PATTERNS) ||
+        matchesAny(replyText, ACCEPTED_PATTERNS) ||
+        matchesAny(replyText, PENDING_OUTCOME_PATTERNS)))
+  ) {
+    return "contested";
+  }
+  if (matchesAny(replyText, REJECTED_PATTERNS)) {
+    return "rejected";
+  }
+  // Returning candidate (rather than null) prevents stale replies or flags winning.
+  if (matchesAny(replyText, NEGATED_OUTCOME_PATTERNS)) {
+    return "candidate";
+  }
+  if (matchesAny(replyText, RESOLVED_PATTERNS) || matchesAny(replyText, REQUESTED_FIX_PATTERNS)) {
+    return "resolved";
+  }
+  if (matchesAny(replyText, ACCEPTED_PATTERNS)) {
+    return "accepted";
+  }
+  if (matchesAny(replyText, PENDING_OUTCOME_PATTERNS)) {
+    return "candidate";
+  }
+  return null;
 }
 
 export function detectCategory(body: string): FailureCandidateCategory {
@@ -555,8 +591,8 @@ function extractFromRecord(record: NormalizedPullRequestRecord): FailureCandidat
           reply.sourceType === "review_comment" &&
           reply.inReplyToId === source.id,
       )
-      .map((reply) => reply.body)
-      .filter(Boolean);
+      .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))
+      .map((reply) => reply.body);
     const reviewThread =
       source.sourceType === "review_comment"
         ? reviewThreadByCommentId.get(String(source.id)) ?? null
