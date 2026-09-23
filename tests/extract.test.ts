@@ -5,6 +5,9 @@ import {
   detectSeverity,
   detectStatus,
   extractFailureCandidates,
+  inferStatus,
+  type StatusInference,
+  type StatusThread,
 } from "../src/extract";
 import type { NormalizedPullRequestRecord } from "../src/types";
 
@@ -413,6 +416,67 @@ describe("extractFailureCandidates", () => {
     expect(candidate.status).toBe("resolved");
   });
 
+  test.each([
+    [0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0],
+  ])("orders reply timestamps before inference: %d,%d,%d", (first, second, third) => {
+    const order = [first, second, third];
+    for (const bodies of [
+      ["Not fixed yet.", "Fixed in abc123.", "Thanks for the update."],
+      ["Fixed in abc123.", "I have not yet added the null check.", "Thanks for the update."],
+    ]) {
+      const replies = bodies.map((body, index) => ({
+        ...baseRecord.reviewComments[0],
+        id: 2002 + index,
+        inReplyToId: 2001,
+        body,
+        createdAt: `2026-05-02T03:0${index + 1}:00Z`,
+      }));
+      const record = {
+        ...baseRecord,
+        reviewComments: [baseRecord.reviewComments[0], ...order.map((index) => replies[index])],
+        reviewThreads: [{ ...baseRecord.reviewThreads[0], isResolved: true }],
+      };
+      const inputOrder = record.reviewComments.map((comment) => comment.id);
+      const [candidate] = extractFailureCandidates([record]);
+      const expected = inferStatus(baseRecord.reviewComments[0].body, bodies, record.reviewThreads[0]);
+
+      expect(expected.replyIndex).toBe(1);
+      expect(candidate.status).toBe(expected.status);
+      expect(record.reviewComments.map((comment) => comment.id)).toEqual(inputOrder);
+    }
+  });
+
+  test.each(["Fixed in abc123.", "Not fixed yet.", "Can you confirm this is fixed?"])(
+    "keeps replies and flags isolated to their own thread: %s",
+    (body) => {
+      const record = {
+        ...baseRecord,
+        reviewComments: [
+          baseRecord.reviewComments[0],
+          { ...baseRecord.reviewComments[0], id: 3001 },
+          { ...baseRecord.reviewComments[0], id: 3002, inReplyToId: 3001, body },
+        ],
+        reviewThreads: [
+          baseRecord.reviewThreads[0],
+          {
+            ...baseRecord.reviewThreads[0],
+            id: "other-thread",
+            isResolved: true,
+            isOutdated: true,
+            commentIds: ["3001", "3002"],
+          },
+        ],
+      };
+      const candidates = extractFailureCandidates([record]);
+
+      expect(candidates).toHaveLength(2);
+      expect(candidates.find((candidate) => candidate.id.endsWith("-2001"))?.status).toBe("candidate");
+      expect(candidates.find((candidate) => candidate.id.endsWith("-3001"))?.status).toBe(
+        inferStatus("This is unsafe", [body], record.reviewThreads[1]).status,
+      );
+    },
+  );
+
   test("extracts transaction existence-check regressions and treats requested fixes as resolved", () => {
     const record = {
       ...baseRecord,
@@ -656,6 +720,222 @@ describe("extractFailureCandidates", () => {
 
     expect(candidate.candidateCategory).toBe("preview_output_parity_failure");
   });
+});
+
+describe("status inference evidence", () => {
+  const threadStates: Array<StatusThread | null> = [
+    null,
+    { isResolved: false, isOutdated: false },
+    { isResolved: true, isOutdated: false },
+    { isResolved: false, isOutdated: true },
+    { isResolved: true, isOutdated: true },
+  ];
+  const acknowledgementFixtures: Array<[string, StatusInference["status"]]> = [
+    ["Fixed.", "resolved"],
+    ["Fixed in abc123.", "resolved"],
+    ["Good catch, fixed in the follow-up commit.", "resolved"],
+    ["I've fixed the issue.", "resolved"],
+    ["We have resolved this.", "resolved"],
+    ["This is now fixed.", "resolved"],
+    ["The issue has been resolved.", "resolved"],
+    ["Addressed in abc123.", "resolved"],
+    ["Added the null check as requested.", "resolved"],
+    ["I have added the requested guard.", "resolved"],
+    ["We've added regression tests.", "resolved"],
+    ["Added validation.", "resolved"],
+    ["Added error handling.", "resolved"],
+    ["Added the early return as requested.", "resolved"],
+    ["Good catch.", "accepted"],
+    ["Good catch, I'll fix this.", "accepted"],
+    ["This is valid.", "accepted"],
+    ["Valid point.", "accepted"],
+    ["Your concern is valid.", "accepted"],
+    ["Done.", "accepted"],
+    ["Addressed.", "accepted"],
+    ["Agreed.", "accepted"],
+    ["I agree with your concern.", "accepted"],
+    ["You're right.", "accepted"],
+    ["I disagree, this is not an issue.", "rejected"],
+    ["This is not valid.", "rejected"],
+    ["This isn't valid.", "rejected"],
+    ["Not a valid concern.", "rejected"],
+    ["This is a false positive.", "rejected"],
+    ["Leaving as-is.", "rejected"],
+    ["Not fixed yet.", "candidate"],
+    ["This has not been resolved.", "candidate"],
+    ["It wasn't actually fixed.", "candidate"],
+    ["I have never addressed this.", "candidate"],
+    ["Not added the null check as requested.", "candidate"],
+    ["I have not yet added the null check.", "candidate"],
+    ["I haven't added the requested guard.", "candidate"],
+    ["We haven’t yet added validation.", "candidate"],
+    ["I did not add the test.", "candidate"],
+    ["Good catch, but this is not fixed yet.", "candidate"],
+    ["Not a good catch.", "candidate"],
+    ["This isn't a good catch.", "candidate"],
+    ["Not done yet.", "candidate"],
+    ["We have not agreed.", "candidate"],
+    ["You are not right.", "candidate"],
+    ["This has never been valid.", "candidate"],
+    ["This is not yet valid.", "candidate"],
+    ["I won't fix this.", "candidate"],
+    ["This will not be fixed in this PR.", "candidate"],
+    ["I will add the null check as requested.", "candidate"],
+    ["Will fix.", "candidate"],
+    ["I'll fix this tomorrow.", "candidate"],
+    ["This would be fixed by the guard.", "candidate"],
+    ["This would have been fixed by validation.", "candidate"],
+    ["This should be resolved after the follow-up.", "candidate"],
+    ["We plan to add regression tests.", "candidate"],
+    ["I would agree after another review.", "candidate"],
+    ["Can you confirm this is fixed?", "contested"],
+    ["Is this fixed?", "contested"],
+    ["Fixed?", "contested"],
+    ["Not sure this is resolved.", "contested"],
+    ["I think this is fixed.", "contested"],
+    ["Perhaps this is resolved.", "contested"],
+    ["This is probably fixed.", "contested"],
+    ["This seems fixed.", "contested"],
+    ["Is this right?", "contested"],
+    ["Is this valid?", "contested"],
+    ["Good catch?", "contested"],
+    ["Added the null check as requested?", "contested"],
+    ["Have you added the requested guard?", "contested"],
+    ["Will you fix this?", "contested"],
+  ];
+
+  test.each(acknowledgementFixtures)("%s => %s with matching reply provenance", (body, status) => {
+    for (const thread of threadStates) {
+      const replies = ["", body, "Thanks for the update."];
+      const original = [...replies];
+      expect(inferStatus("This is unsafe", replies, thread)).toEqual({
+        status,
+        basis: "reply",
+        replyIndex: 1,
+      });
+      expect(detectStatus("This is unsafe", replies, thread)).toBe(status);
+      expect(replies).toEqual(original);
+    }
+  });
+
+  test.each([
+    "",
+    "Thanks for the update.",
+    "Valid JSON is required here.",
+    "This is valid JSON.",
+    "This isn't valid JSON.",
+    "The response is valid according to the JSON schema.",
+    "The parser accepts a valid identifier.",
+    "We use fixed-width fields.",
+    "Fixed-width values are documented here.",
+    "Fixed width columns are easier to read.",
+    "The agreed schema is in the docs.",
+    "The done callback returns a boolean.",
+    "The example mentions an added null check.",
+    "The docs describe a good catch phrase.",
+    "What does fixed-width mean?",
+    "Does this return valid JSON?",
+  ])("neutral text does not manufacture outcome evidence: %s", (body) => {
+    for (const thread of threadStates) {
+      const expected: StatusInference = thread?.isResolved
+        ? { status: "resolved", basis: "thread_resolved", replyIndex: null }
+        : thread?.isOutdated
+          ? { status: "superseded", basis: "thread_outdated", replyIndex: null }
+          : { status: "candidate", basis: "none", replyIndex: null };
+      expect(inferStatus("This is unsafe", [body], thread)).toEqual(expected);
+      expect(inferStatus("This is unsafe", ["Fixed in abc123.", body], thread)).toEqual({
+        status: "resolved",
+        basis: "reply",
+        replyIndex: 0,
+      });
+    }
+  });
+
+  const provenanceFixtures: Array<{
+    name: string;
+    source?: string;
+    replies: string[];
+    thread?: StatusThread;
+    expected: StatusInference;
+  }> = [
+    {
+      name: "no evidence",
+      replies: [],
+      expected: { status: "candidate", basis: "none", replyIndex: null },
+    },
+    {
+      name: "completion in a source finding is not reply confirmation",
+      source: "The bug was fixed in a prior release.",
+      replies: [],
+      expected: { status: "candidate", basis: "none", replyIndex: null },
+    },
+    {
+      name: "source uncertainty",
+      source: "I think this is unsafe. Thoughts?",
+      replies: ["Thanks for the update."],
+      expected: { status: "contested", basis: "source", replyIndex: null },
+    },
+    {
+      name: "metadata-only resolved thread",
+      replies: [],
+      thread: { isResolved: true, isOutdated: false },
+      expected: { status: "resolved", basis: "thread_resolved", replyIndex: null },
+    },
+    {
+      name: "metadata-only outdated thread",
+      replies: [],
+      thread: { isResolved: false, isOutdated: true },
+      expected: { status: "superseded", basis: "thread_outdated", replyIndex: null },
+    },
+    {
+      name: "resolved flag precedes outdated flag and source uncertainty",
+      source: "I think this is unsafe. Thoughts?",
+      replies: [],
+      thread: { isResolved: true, isOutdated: true },
+      expected: { status: "resolved", basis: "thread_resolved", replyIndex: null },
+    },
+    {
+      name: "source uncertainty precedes outdated metadata",
+      source: "I think this is unsafe. Thoughts?",
+      replies: [],
+      thread: { isResolved: false, isOutdated: true },
+      expected: { status: "contested", basis: "source", replyIndex: null },
+    },
+    {
+      name: "later fix supersedes earlier negation",
+      replies: ["Not fixed yet.", "Fixed in abc123."],
+      expected: { status: "resolved", basis: "reply", replyIndex: 1 },
+    },
+    {
+      name: "later negation supersedes earlier fix and resolved flag",
+      replies: ["Fixed in abc123.", "Not fixed yet.", "Thanks."],
+      thread: { isResolved: true, isOutdated: false },
+      expected: { status: "candidate", basis: "reply", replyIndex: 1 },
+    },
+    {
+      name: "later rejection supersedes acceptance",
+      replies: ["Good catch.", "I disagree, this is not an issue.", ""],
+      expected: { status: "rejected", basis: "reply", replyIndex: 1 },
+    },
+    {
+      name: "later acknowledgement supersedes rejection",
+      replies: ["This is a false positive.", "", "Good catch."],
+      expected: { status: "accepted", basis: "reply", replyIndex: 2 },
+    },
+    {
+      name: "later uncertainty supersedes resolution",
+      replies: ["Fixed.", "Can you confirm this is fixed?", "Thanks."],
+      thread: { isResolved: true, isOutdated: true },
+      expected: { status: "contested", basis: "reply", replyIndex: 1 },
+    },
+  ];
+
+  for (const { name, source = "This is unsafe", replies, thread, expected } of provenanceFixtures) {
+    test(name, () => {
+      expect(inferStatus(source, replies, thread)).toEqual(expected);
+      expect(detectStatus(source, replies, thread)).toBe(expected.status);
+    });
+  }
 });
 
 describe("deterministic extraction helpers", () => {

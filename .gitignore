@@ -1,3 +1,6 @@
 .traceback/
 dist/
 node_modules/
+
+# Raw eval snapshots contain private-repo content; only labels and reports are committed.
+eval/data/

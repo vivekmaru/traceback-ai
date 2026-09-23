@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getTracebackPaths, initTraceback } from "./storage";
+import { FAILURE_CANDIDATE_CATEGORIES, FAILURE_CANDIDATE_STATUSES } from "./types";
 import type { FailureCandidate } from "./types";
 
 export type AnalyzeMode = "dry-run" | "provider";
@@ -206,7 +207,8 @@ export async function readFailureCandidates(repoRoot: string): Promise<FailureCa
   let entries: string[];
   try {
     entries = await readdir(paths.failures);
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     throw new Error(
       "No failure candidates found in .traceback/records/failures/. Run `traceback extract` first.",
     );
@@ -222,11 +224,43 @@ export async function readFailureCandidates(repoRoot: string): Promise<FailureCa
   const candidates = await Promise.all(
     jsonEntries.map(async (entry) => {
       const raw = await readFile(path.join(paths.failures, entry), "utf8");
-      return JSON.parse(raw) as FailureCandidate;
+      let value: unknown;
+      try { value = JSON.parse(raw); } catch { throw new Error(`Invalid candidate JSON: ${entry}`); }
+      assertFailureCandidate(value, entry);
+      return value;
     }),
   );
-
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    if (seen.has(candidate.id)) throw new Error(`Duplicate candidate ID: ${candidate.id}`);
+    seen.add(candidate.id);
+  }
   return candidates.sort(compareFailureCandidates);
+}
+
+function assertFailureCandidate(value: unknown, file: string): asserts value is FailureCandidate {
+  const invalid = () => new Error(`Invalid failure candidate in ${file}. Re-run traceback extract.`);
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw invalid();
+  const item = value as Record<string, unknown>;
+  const strings = (field: unknown) => Array.isArray(field) && field.every((entry) => typeof entry === "string");
+  const httpUrl = (field: unknown) => {
+    if (typeof field !== "string") return false;
+    try { return ["https:", "http:"].includes(new URL(field).protocol); } catch { return false; }
+  };
+  const id = typeof item.id === "string" ? item.id.match(/^failure-pr-(\d+)-(review_comment|issue_comment|review|pr_body)-(\d+)$/) : null;
+  if (item.schemaVersion !== 1 || !id || Number(id[1]) !== item.sourcePrNumber || id[2] !== item.sourceType ||
+      !Number.isSafeInteger(item.sourcePrNumber) || Number(item.sourcePrNumber) <= 0 ||
+      !httpUrl(item.sourcePrUrl) || (item.sourceCommentUrl !== null && !httpUrl(item.sourceCommentUrl)) ||
+      (item.sourceAuthor !== null && typeof item.sourceAuthor !== "string") ||
+      typeof item.extractedTitle !== "string" || typeof item.evidenceExcerpt !== "string" ||
+      !FAILURE_CANDIDATE_CATEGORIES.includes(item.candidateCategory as FailureCandidate["candidateCategory"]) ||
+      !FAILURE_CANDIDATE_STATUSES.includes(item.status as FailureCandidate["status"]) ||
+      ![null, "low", "medium", "high"].includes(item.candidateSeverity as FailureCandidate["candidateSeverity"]) ||
+      typeof item.confidence !== "string" || !["low", "medium", "high"].includes(item.confidence) ||
+      !strings(item.detectedAgentMarkers) || !strings(item.notes) ||
+      ![item.createdAt, item.updatedAt].every((date) => date === null || (typeof date === "string" && Number.isFinite(Date.parse(date))))) {
+    throw invalid();
+  }
 }
 
 export function buildAnalysisInput(

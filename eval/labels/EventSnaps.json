@@ -1,0 +1,1150 @@
+{
+  "repo": "EventSnaps",
+  "labeledAt": "2026-09-23T02:59:20Z",
+  "labeler": "blind agent review; pending human adjudication",
+  "entries": [
+    {
+      "key": "pr_body:187",
+      "isFinding": true,
+      "category": null,
+      "status": "resolved",
+      "note": "Identity churn and deployment misconfiguration are distinct defects; single-category assignment needs adjudication. Body reports scoped fixes."
+    },
+    {
+      "key": "review_comment:3740283244",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "A signed-out visitor inherits another person's persisted analytics identity. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3763125279",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "resolved",
+      "note": "Flag exposure precedes authentication settlement and uses another identity's assignment. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "review_comment:3763125286",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Asynchronous copy replacement shifts mobile layout. No fitting layout bucket; same-thread reply confirms a tested fix."
+    },
+    {
+      "key": "review_comment:3837343357",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Missing staging build configuration selects production analytics assignments. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "review_comment:3837363716",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Unchanged identity is transmitted repeatedly during navigation, adding unnecessary network work. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "review_comment:3837378010",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "resolved",
+      "note": "An old asynchronous response publishes an assignment after identity changes. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "review_comment:3837388937",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "The experiment omits conversion tracking at the action required by its stated goal. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "review_comment:4055252006",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "rejected",
+      "note": "Reports response reordering, but the same-thread reply explicitly rebuts it using the pinned dependency's serialization guarantee. Dismissal overrides resolved metadata."
+    },
+    {
+      "key": "review_comment:4055300604",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Property updates fail to invalidate cached assignments. No dedicated cache-invalidation bucket; same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:4055340300",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "resolved",
+      "note": "Reset permits concurrent responses that expose an old identity's assignment. Same-thread reply confirms a guarded reload fix."
+    },
+    {
+      "key": "review_comment:4055340302",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Recorder teardown ordering permits recording on a privacy-excluded surface. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:4055393877",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Forwarded request headers disclose a bearer credential to an analytics service. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "issue_comment:5261252227",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review request only."
+    },
+    {
+      "key": "issue_comment:5261309975",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "No-findings review notice and service boilerplate."
+    },
+    {
+      "key": "issue_comment:5384361984",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review request only."
+    },
+    {
+      "key": "issue_comment:5384374066",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "No-findings review notice and service boilerplate."
+    },
+    {
+      "key": "issue_comment:5746120803",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary links an existing finding without adding substantive evidence."
+    },
+    {
+      "key": "review:4888430430",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:4890828445",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:4912383237",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5001339212",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5001357808",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5001370434",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5001379897",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5258365354",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5258418231",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5258466647",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5258467448",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5258467676",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5258467996",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5258527768",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated security review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5258570727",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5258571394",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5258571973",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "pr_body:208",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Feature and endpoint summary without a concrete defect."
+    },
+    {
+      "key": "review_comment:3887901148",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Proxy configuration supplies an invalid empty parameter and breaks the primary route. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3887901149",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Cache validation omits a rendering input and preserves stale images. No dedicated cache-invalidation bucket; same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3887901150",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "An invalid proxy directive prevents the web server from starting. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3888012338",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Shared-network upstream selection serves production assets to staging. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3888012340",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Static routing precedence intercepts a dynamic image endpoint and returns missing-file errors. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3888012345",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Rendered branding ignores the configured deployment domain. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3890531700",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Public metadata exposes information about unpublished content. Same-thread reply confirms publication checks and cache restrictions."
+    },
+    {
+      "key": "review_comment:3890531702",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "A production fallback references an unavailable development entry point, causing blank pages. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3899076501",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Server metadata hardcodes branding instead of using deployment configuration. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3899165574",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Client hydration replaces configured branding with a hardcoded name. Same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3899165581",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Unbounded public rendering permits resource exhaustion through cache-busting requests. Same-thread reply confirms rate limiting."
+    },
+    {
+      "key": "issue_comment:5465360240",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5059394379",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5059504797",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5061885710",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5061886036",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5061886327",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5061886611",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5061886855",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5061887178",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5061892659",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5072060131",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5072061069",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5072096135",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5072172750",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5072196783",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5072261011",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5072262417",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "pr_body:209",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Deployment silently refreshes privileged third-party images. Body reports a scoped allowlist fix and verification."
+    },
+    {
+      "key": "issue_comment:5465384050",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "pr_body:210",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Client-controlled storage references permit unauthorized deletion. Body explicitly reports removing the injection path; unrelated closure comments are not used."
+    },
+    {
+      "key": "issue_comment:5465394954",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "issue_comment:5466060169",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Supersession notice lists replacement coverage without substantively identifying a new defect."
+    },
+    {
+      "key": "pr_body:211",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Automatic analytics collection can disclose access credentials. Body describes implemented sanitization and passing focused checks."
+    },
+    {
+      "key": "issue_comment:5465400695",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review service status notice, not an application finding."
+    },
+    {
+      "key": "pr_body:212",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Standalone remediation write-up identifies analytics credential disclosure and reports scoped changes and checks."
+    },
+    {
+      "key": "review_comment:3887922064",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Automatic session attribution still sends bearer credentials despite pageview sanitization. Same-thread reply confirms recursive scrubbing."
+    },
+    {
+      "key": "issue_comment:5465401341",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary links an existing finding without adding substantive evidence."
+    },
+    {
+      "key": "issue_comment:5466117961",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review requests only."
+    },
+    {
+      "key": "issue_comment:5466133381",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "No-findings review notice and boilerplate."
+    },
+    {
+      "key": "issue_comment:5466139279",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "No-findings security review notice and boilerplate."
+    },
+    {
+      "key": "review:5059413979",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated security review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5059680551",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "pr_body:213",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Automatic URL enrichment leaks access credentials. Body reports a sanitizer and passing checks; separate review evidence is not applied to its outcome."
+    },
+    {
+      "key": "review_comment:3887928621",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "candidate",
+      "note": "Unfiltered nested analytics fields still disclose access credentials. No same-thread reply or resolved/outdated metadata; consolidation elsewhere does not resolve this source."
+    },
+    {
+      "key": "issue_comment:5465406962",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary links an existing finding without adding substantive evidence."
+    },
+    {
+      "key": "issue_comment:5466060366",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Consolidation notice lists combined changes without a new substantive finding."
+    },
+    {
+      "key": "review:5059420560",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated security review introduction and boilerplate only."
+    },
+    {
+      "key": "pr_body:214",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Mutable storage references permit deletion outside the owning resource. Body reports input removal and ownership validation."
+    },
+    {
+      "key": "issue_comment:5466118471",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "pr_body:215",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "candidate",
+      "note": "Sequential archive preparation exceeds download deadlines. A streaming fix is described, but the source explicitly keeps the incident open pending production verification."
+    },
+    {
+      "key": "review_comment:3892914538",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "A clean stream abort is reported as success while delivering a corrupt archive. No fitting transport-integrity bucket; same-thread reply confirms the fix."
+    },
+    {
+      "key": "review_comment:3892914546",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Waiting for the slowest initial fetch blocks all output and still triggers timeouts. Same-thread reply confirms bounded, incremental delivery."
+    },
+    {
+      "key": "review_comment:3892914551",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Cancelled downloads continue resource-intensive production and retain streams. Same-thread reply explicitly reports cancellation handling."
+    },
+    {
+      "key": "review_comment:3892961445",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "The fetch deadline excludes stalled body consumption, leaving archive output blocked. Same-thread reply confirms an output watchdog."
+    },
+    {
+      "key": "issue_comment:5475861222",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5064573213",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5064613973",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5064614156",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5064614336",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5064631106",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5064784373",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "pr_body:216",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Substantively identifies export timeouts and adds explicit production-fix verification, rather than merely naming a backmerge."
+    },
+    {
+      "key": "review_comment:3893500758",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Transient fetch failures silently omit media from successful exports. This is not identifier-collision loss; same-thread reply confirms failure propagation."
+    },
+    {
+      "key": "review_comment:3893500762",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Timeouts abandon live requests and accumulate sockets and bandwidth usage. Same-thread reply confirms request cancellation."
+    },
+    {
+      "key": "review_comment:3893705650",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "resolved",
+      "note": "An uncleared timer aborts a successful request during later body consumption. Same-thread reply confirms timer cleanup."
+    },
+    {
+      "key": "review_comment:3893776537",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Disconnect teardown leaves storage requests and streams active. Same-thread reply explicitly reports active-request cancellation."
+    },
+    {
+      "key": "issue_comment:5476813154",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5065306833",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5065523189",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5065523428",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5065551151",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5065636075",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5065905247",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5065905421",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "pr_body:217",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "Missing error-monitor initialization violates the existing promise that failures are logged. Body reports restoring capture and covering previously invisible failures."
+    },
+    {
+      "key": "review_comment:3894352613",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Customer-specific grouping keys fragment identical incidents. No fitting incident-grouping bucket; same-thread reply reports a fix."
+    },
+    {
+      "key": "review_comment:3894352622",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Unsanitized request breadcrumbs disclose access credentials to monitoring. Same-thread reply confirms scrubbing."
+    },
+    {
+      "key": "review_comment:3894352629",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Intentional cancellations are incorrectly classified as failure incidents, not merely assigned an HTTP code. Same-thread reply confirms exclusion."
+    },
+    {
+      "key": "review_comment:3894681975",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "The revised grouping still retains dynamic customer identifiers and fragments incidents. No fitting grouping bucket; same-thread reply confirms another fix."
+    },
+    {
+      "key": "review_comment:3894758677",
+      "isFinding": true,
+      "category": "lifecycle_ordering_bug",
+      "status": "resolved",
+      "note": "Competing failure paths repeatedly report and tear down the same download. Same-thread reply confirms an idempotence guard."
+    },
+    {
+      "key": "issue_comment:5478181361",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5066342078",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5066736870",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5066737163",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5066737454",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5066755070",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5066832661",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "review:5066862981",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "review:5066914542",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body."
+    },
+    {
+      "key": "pr_body:218",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Test-coverage summary describes expected behavior, not an existing defect."
+    },
+    {
+      "key": "review_comment:3940933023",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "The test omits the requested-resource isolation contract and passes for an incorrect lookup. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "issue_comment:5552458170",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5552459226",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5121600896",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "pr_body:219",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Documentation-only summary retracts an improvement claim without substantively explaining a defect."
+    },
+    {
+      "key": "review_comment:3940917159",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "The claimed optimization is absent because the baseline already implements it. Concrete false implementation claim, not a performance regression; resolved thread metadata."
+    },
+    {
+      "key": "review_comment:3940917162",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "Required knowledge is placed outside the designated authoritative documentation, violating an explicit repository contract. Resolved thread metadata; no reply."
+    },
+    {
+      "key": "issue_comment:5552462644",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5552463966",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5121582243",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    },
+    {
+      "key": "pr_body:220",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Identifies concrete unnecessary serial database waits at named endpoints. Body reports parallelization; latency improvement is not measured."
+    },
+    {
+      "key": "issue_comment:5629645118",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5629646622",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "pr_body:221",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Character-counter enhancement describes hypothetical confusion, not concrete input loss or a broken contract."
+    },
+    {
+      "key": "issue_comment:5643480763",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5643481643",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "pr_body:222",
+      "isFinding": true,
+      "category": null,
+      "status": "resolved",
+      "note": "False offline inference and shared-network upload throttling are independent concrete defects; single-category assignment needs adjudication. Body reports fixes and tests."
+    },
+    {
+      "key": "issue_comment:5674710546",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review service status notice, not an application finding."
+    },
+    {
+      "key": "issue_comment:5675628836",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review request only."
+    },
+    {
+      "key": "issue_comment:5675673269",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Generic review-service failure notice without substantive defect evidence."
+    },
+    {
+      "key": "issue_comment:5675689888",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review request only."
+    },
+    {
+      "key": "issue_comment:5675707397",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "No-findings review notice and boilerplate."
+    },
+    {
+      "key": "issue_comment:5675713704",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Generic review-service failure notice without substantive defect evidence."
+    },
+    {
+      "key": "pr_body:223",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Backmerge notice merely names earlier fixes; no new substantive finding."
+    },
+    {
+      "key": "issue_comment:5676832772",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review service status notice, not an application finding."
+    },
+    {
+      "key": "pr_body:224",
+      "isFinding": true,
+      "category": "performance_regression",
+      "status": "resolved",
+      "note": "Explains unnecessary serial database waits on specific request paths and reports parallelization. Improvement remains unmeasured; environment test blockage is not the finding."
+    },
+    {
+      "key": "issue_comment:5724886607",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5724887641",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "pr_body:225",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Generic defense-in-depth header enhancement identifies no concrete exploit, unsafe behavior, or violated contract."
+    },
+    {
+      "key": "issue_comment:5725028785",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5725030353",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "pr_body:226",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Loading state is conveyed visually but not semantically to assistive technology. No fitting accessibility bucket; body reports adding the missing state."
+    },
+    {
+      "key": "review_comment:4052136293",
+      "isFinding": true,
+      "category": "overbroad_change",
+      "status": "candidate",
+      "note": "An unrelated accessibility change deletes an active specification and breaks documentation references. No same-thread outcome or resolved/outdated metadata."
+    },
+    {
+      "key": "issue_comment:5739170794",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Bot greeting and operating instructions only."
+    },
+    {
+      "key": "issue_comment:5739171815",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review activity summary and boilerplate without a finding."
+    },
+    {
+      "key": "review:5254465015",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review introduction and boilerplate only."
+    }
+  ],
+  "schemaVersion": 1,
+  "snapshotHash": "592a46f432bf53abf94e48ce07756e94852c447c56968a8d516163ac582cffbd"
+}

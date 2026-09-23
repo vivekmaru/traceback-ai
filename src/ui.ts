@@ -1,9 +1,12 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import type { Stats } from "node:fs";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { getTracebackPaths } from "./storage";
+import { inferStatus } from "./extract";
+import { assertSafeRunId } from "./run-id";
 import type { AnalysisOutput } from "./analyze";
 import type { ReviewDecision, ReviewDecisionsFile } from "./review";
-import type { DraftRule, DraftRulesFile } from "./rules";
+import type { DraftRule, DraftRulesFile, LearningScope } from "./rules";
 import type { RuleDecision, RuleDecisionsFile } from "./rules-review";
 import type {
   FailureCandidate,
@@ -25,6 +28,7 @@ export type UiState = {
   summary: UiSummary;
   candidates: UiCandidate[];
   runs: UiRun[];
+  defaultRunId: string | null;
   clusters: UiCluster[];
   reviewDecisions: UiReviewDecision[];
   draftRules: UiDraftRule[];
@@ -69,7 +73,11 @@ export type UiCandidate = {
 export type UiCandidateStatusEvidence = {
   label: string;
   detail: string;
+  basis: ReturnType<typeof inferStatus>["basis"];
+  inferredStatus: FailureCandidateStatus | null;
+  matchesStoredStatus: boolean | null;
   replyCount: number;
+  supportingReplyExcerpt: string | null;
   latestReplyExcerpt: string | null;
   threadResolved: boolean | null;
   threadOutdated: boolean | null;
@@ -84,6 +92,10 @@ export type UiRun = {
   hasInput: boolean;
   hasPrompt: boolean;
   hasProviderOutput: boolean;
+  hasAnalysisOutput: boolean;
+  hasReviewOutput: boolean;
+  hasDraftRules: boolean;
+  hasRuleDecisions: boolean;
   enrichedRecords: number;
   clusters: number;
   reviewDecisions: number;
@@ -126,6 +138,7 @@ export type UiDraftRule = {
   id: string;
   title: string;
   rule: string;
+  learningScope: LearningScope | "unknown";
   confidence: string;
   sourcePrs: number[];
 };
@@ -155,7 +168,7 @@ export type UiExport = {
 };
 
 type AnalysisManifest = {
-  runId: string;
+  runId?: string;
   mode: string;
   provider: string | null;
   createdAt: string;
@@ -184,10 +197,10 @@ type RulesExportManifest = {
 
 export async function loadUiState(repoRoot: string, now = new Date()): Promise<UiState> {
   const paths = getTracebackPaths(repoRoot);
-  const records = await readJsonFiles<NormalizedPullRequestRecord>(paths.records, (name) =>
+  const records = await readJsonFiles<NormalizedPullRequestRecord>(paths.dir, paths.records, (name) =>
     /^pr-\d+\.json$/.test(name),
   );
-  const candidates = await readJsonFiles<FailureCandidate>(paths.failures, (name) => name.endsWith(".json"));
+  const candidates = await readJsonFiles<FailureCandidate>(paths.dir, paths.failures, (name) => name.endsWith(".json"));
   const runs = await readRuns(repoRoot);
   const summary = buildSummary({ records, candidates, runs });
   const warnings = buildWarnings({ records, candidates, runs });
@@ -199,6 +212,7 @@ export async function loadUiState(repoRoot: string, now = new Date()): Promise<U
     summary,
     candidates: candidates.map((candidate) => toUiCandidate(candidate, records)),
     runs,
+    defaultRunId: runs.find((run) => run.mode === "provider" && run.hasProviderOutput && run.hasAnalysisOutput)?.runId ?? runs[0]?.runId ?? null,
     clusters: runs.flatMap((run) => run.clusterItems),
     reviewDecisions: runs.flatMap((run) => run.reviewDecisionItems),
     draftRules: runs.flatMap((run) => run.draftRuleItems),
@@ -209,30 +223,15 @@ export async function loadUiState(repoRoot: string, now = new Date()): Promise<U
 }
 
 export async function runUiServer(repoRoot: string, options: UiServerOptions): Promise<void> {
+  if (!["127.0.0.1", "localhost", "::1"].includes(options.host)) {
+    throw new Error("Traceback UI must bind to a loopback host: 127.0.0.1, localhost, or ::1.");
+  }
   const server = Bun.serve({
-    hostname: options.host,
+    // Do not depend on DNS or hosts-file resolution to keep localhost local.
+    hostname: options.host === "localhost" ? "127.0.0.1" : options.host,
     port: options.port,
-    async fetch(request) {
-      const url = new URL(request.url);
-
-      if (url.pathname === "/") {
-        return htmlResponse(renderHtml());
-      }
-
-      if (url.pathname === "/api/state") {
-        try {
-          return jsonResponse(await loadUiState(repoRoot));
-        } catch (error) {
-          return jsonResponse(
-            {
-              error: error instanceof Error ? error.message : String(error),
-            },
-            500,
-          );
-        }
-      }
-
-      return new Response("Not found", { status: 404 });
+    fetch(request, server) {
+      return createUiRequestHandler(repoRoot, server.port!)(request);
     },
   });
 
@@ -240,40 +239,83 @@ export async function runUiServer(repoRoot: string, options: UiServerOptions): P
   await new Promise(() => {});
 }
 
+export function createUiRequestHandler(repoRoot: string, port: number) {
+  const localAuthorities = ["127.0.0.1", "localhost", "[::1]"]
+    .flatMap((host) => port === 80 ? [host, `${host}:80`] : [`${host}:${port}`]);
+
+  return async (request: Request): Promise<Response> => {
+    const respond = (response: Response): Response => {
+      response.headers.set("cache-control", "no-store");
+      response.headers.set("x-content-type-options", "nosniff");
+      response.headers.set("referrer-policy", "no-referrer");
+      return request.method === "HEAD"
+        ? new Response(null, { status: response.status, headers: response.headers })
+        : response;
+    };
+    const url = new URL(request.url);
+    const host = request.headers.get("host")?.toLowerCase();
+    const origin = request.headers.get("origin");
+    const fetchSite = request.headers.get("sec-fetch-site");
+    if (
+      url.protocol !== "http:" || url.username || url.password ||
+      !localAuthorities.includes(url.host) || !host || !localAuthorities.includes(host) ||
+      new URL(`http://${host}`).host !== url.host ||
+      (origin !== null && origin !== url.origin) ||
+      (fetchSite !== null && fetchSite !== "same-origin" && fetchSite !== "none")
+    ) {
+      return respond(new Response("Forbidden: Traceback UI only accepts same-origin loopback requests.", { status: 403 }));
+    }
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return respond(new Response("Method not allowed", { status: 405, headers: { allow: "GET, HEAD" } }));
+    }
+    if (url.pathname === "/") {
+      return respond(htmlResponse(renderHtml()));
+    }
+    if (url.pathname === "/api/state") {
+      try {
+        return respond(jsonResponse(await loadUiState(repoRoot)));
+      } catch (error) {
+        return respond(jsonResponse({ error: error instanceof Error ? error.message : String(error) }, 500));
+      }
+    }
+    return respond(new Response("Not found", { status: 404 }));
+  };
+}
+
 async function readRuns(repoRoot: string): Promise<UiRun[]> {
   const paths = getTracebackPaths(repoRoot);
-  let entries: string[];
-  try {
-    entries = await readdir(paths.analysisRuns, { withFileTypes: true }).then((items) =>
-      items.filter((item) => item.isDirectory()).map((item) => item.name),
-    );
-  } catch {
-    return [];
-  }
-
+  const entries = (await readDirectoryIfExists(paths.dir, paths.analysisRuns))
+    .filter((item) => item.isDirectory() || item.isSymbolicLink())
+    .map((item) => item.name);
   const runs = await Promise.all(entries.sort().reverse().map((runId) => readRun(repoRoot, runId)));
   return runs.sort(compareRuns);
 }
 
 async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
+  assertSafeRunId(runId);
   const paths = getTracebackPaths(repoRoot);
   const runDir = path.join(paths.analysisRuns, runId);
-  const manifest = await readJsonIfExists<AnalysisManifest>(path.join(runDir, "manifest.json"));
-  const analysis = await readAnalysisOutput(runDir);
+  const manifestPath = path.join(runDir, "manifest.json");
+  const manifest = await readJsonIfExists<AnalysisManifest>(paths.dir, manifestPath);
+  assertManifestRunId(manifest, runId, manifestPath);
+  const inputPath = manifestFilePath(manifest, "input", manifestPath, "input.json");
+  const promptPath = manifestFilePath(manifest, "prompt", manifestPath, "prompt.md");
+  const responsePath = manifestFilePath(manifest, "response", manifestPath, null);
+  const analysis = await readAnalysisOutput(paths.dir, runDir);
   const reviews = await readJsonIfExists<ReviewDecisionsFile>(
-    path.join(paths.reviews, runId, "decisions.json"),
+    paths.dir, path.join(paths.reviews, runId, "decisions.json"),
   );
   const draftRules = await readJsonIfExists<DraftRulesFile>(
-    path.join(paths.rules, runId, "draft-rules.json"),
+    paths.dir, path.join(paths.rules, runId, "draft-rules.json"),
   );
   const ruleDecisions = await readJsonIfExists<RuleDecisionsFile>(
-    path.join(paths.rules, runId, "rule-decisions.json"),
+    paths.dir, path.join(paths.rules, runId, "rule-decisions.json"),
   );
-  const exportManifest = await readJsonIfExists<RulesExportManifest>(
-    path.join(paths.exports, runId, "manifest.json"),
-  );
-  const exportItem = await readExport(paths.exports, runId, exportManifest);
-  const clusterItems = (analysis?.clusters ?? []).map((cluster) => ({
+  const exportManifestPath = path.join(paths.exports, runId, "manifest.json");
+  const exportManifest = await readJsonIfExists<RulesExportManifest>(paths.dir, exportManifestPath);
+  assertManifestRunId(exportManifest, runId, exportManifestPath);
+  const exportItem = await readExport(paths.dir, paths.exports, runId, exportManifest);
+  const clusterItems = (analysis.clusters ?? []).map((cluster) => ({
     runId,
     id: cluster.id,
     title: cluster.title,
@@ -290,9 +332,6 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
   const ruleDecisionItems = (ruleDecisions?.decisions ?? []).map((decision) =>
     toUiRuleDecision(runId, decision),
   );
-  const responsePath = manifest?.files?.response
-    ? path.join(runDir, manifest.files.response)
-    : null;
 
   return {
     runId,
@@ -300,11 +339,15 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
     mode: manifest?.mode ?? "unknown",
     provider: manifest?.provider ?? null,
     failureCandidateCount: manifest?.source?.failureCandidateCount ?? 0,
-    hasInput: await fileExists(path.join(runDir, manifest?.files?.input ?? "input.json")),
-    hasPrompt: await fileExists(path.join(runDir, manifest?.files?.prompt ?? "prompt.md")),
-    hasProviderOutput: responsePath !== null && (await fileExists(responsePath)),
-    enrichedRecords: analysis?.enrichedRecords.length ?? 0,
-    clusters: analysis?.clusters.length ?? 0,
+    hasInput: inputPath !== null && (await fileExists(paths.dir, inputPath)),
+    hasPrompt: promptPath !== null && (await fileExists(paths.dir, promptPath)),
+    hasProviderOutput: responsePath !== null && (await fileExists(paths.dir, responsePath)),
+    hasAnalysisOutput: analysis.enrichedRecords !== undefined && analysis.clusters !== undefined,
+    hasReviewOutput: reviews !== null,
+    hasDraftRules: draftRules !== null,
+    hasRuleDecisions: ruleDecisions !== null,
+    enrichedRecords: analysis.enrichedRecords?.length ?? 0,
+    clusters: analysis.clusters?.length ?? 0,
     reviewDecisions: reviews?.decisions.length ?? 0,
     draftRules: draftRules?.rules.length ?? 0,
     ruleDecisions: ruleDecisions?.decisions.length ?? 0,
@@ -320,6 +363,7 @@ async function readRun(repoRoot: string, runId: string): Promise<UiRun> {
 }
 
 async function readExport(
+  dataRoot: string,
   exportsRoot: string,
   runId: string,
   manifest: RulesExportManifest | null,
@@ -329,9 +373,9 @@ async function readExport(
   }
 
   const exportDir = path.join(exportsRoot, runId);
-  const proposedAgentsText = await readTextIfExists(path.join(exportDir, "AGENTS.proposed.md"));
-  const broaderLearningsText = await readTextIfExists(path.join(exportDir, "broader-learnings.md"));
-  const summaryText = await readTextIfExists(path.join(exportDir, "export-summary.md"));
+  const proposedAgentsText = await readTextIfExists(dataRoot, path.join(exportDir, "AGENTS.proposed.md"));
+  const broaderLearningsText = await readTextIfExists(dataRoot, path.join(exportDir, "broader-learnings.md"));
+  const summaryText = await readTextIfExists(dataRoot, path.join(exportDir, "export-summary.md"));
   return {
     runId,
     target: manifest.target ?? "unknown",
@@ -348,78 +392,122 @@ async function readExport(
   };
 }
 
-async function readAnalysisOutput(runDir: string): Promise<AnalysisOutput | null> {
-  const enrichedRecords = await readJsonIfExists<AnalysisOutput["enrichedRecords"]>(
-    path.join(runDir, "enriched-records.json"),
-  );
-  const clusters = await readJsonIfExists<AnalysisOutput["clusters"]>(path.join(runDir, "clusters.json"));
-  const summary = await readJsonIfExists<AnalysisOutput["summary"]>(path.join(runDir, "summary.json"));
-
-  if (!enrichedRecords && !clusters) {
-    return null;
+function assertManifestRunId(
+  manifest: { runId?: string } | null,
+  runId: string,
+  filePath: string,
+): void {
+  if (manifest?.runId !== undefined && manifest.runId !== runId) {
+    throw new Error(`Manifest runId does not match directory ${runId}: ${filePath}`);
   }
+}
 
+function manifestFilePath(
+  manifest: AnalysisManifest | null,
+  key: "input" | "prompt" | "response",
+  manifestPath: string,
+  fallback: string | null,
+): string | null {
+  const name = manifest?.files?.[key] ?? fallback;
+  if (name === null) return null;
+  // A portable basename only: no traversal, drive prefixes, separators or controls.
+  if (typeof name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name)) {
+    throw new Error(`Invalid files.${key} in ${manifestPath}: expected a safe basename.`);
+  }
+  return path.join(path.dirname(manifestPath), name);
+}
+
+async function readAnalysisOutput(dataRoot: string, runDir: string): Promise<Partial<AnalysisOutput>> {
+  const enrichedRecords = await readJsonIfExists<AnalysisOutput["enrichedRecords"]>(
+    dataRoot, path.join(runDir, "enriched-records.json"),
+  );
+  const clusters = await readJsonIfExists<AnalysisOutput["clusters"]>(dataRoot, path.join(runDir, "clusters.json"));
+  const summary = await readJsonIfExists<AnalysisOutput["summary"]>(dataRoot, path.join(runDir, "summary.json"));
+
+  // Keep parsed partial artifacts inspectable without marking analysis complete.
   return {
-    enrichedRecords: enrichedRecords ?? [],
-    clusters: clusters ?? [],
-    summary: summary ?? {
-      overview: "",
-      highestRiskPatterns: [],
-      recommendedNextActions: [],
-    },
+    enrichedRecords: enrichedRecords ?? undefined,
+    clusters: clusters ?? undefined,
+    summary: summary ?? undefined,
   };
 }
 
 async function readJsonFiles<T>(
+  dataRoot: string,
   dirPath: string,
   predicate: (entry: string) => boolean,
 ): Promise<T[]> {
-  let entries: string[];
-  try {
-    entries = await readdir(dirPath);
-  } catch {
-    return [];
-  }
-
+  const entries = await readDirectoryIfExists(dataRoot, dirPath);
   const values: Array<T | null> = await Promise.all(
     entries
+      .map((entry) => entry.name)
       .filter(predicate)
       .sort()
-      .map(async (entry) => readJsonIfExists<T>(path.join(dirPath, entry))),
+      .map(async (entry) => readJsonIfExists<T>(dataRoot, path.join(dirPath, entry))),
   );
 
   return values.filter((value): value is T => value !== null);
 }
 
-async function readJsonIfExists<T>(filePath: string): Promise<T | null> {
+async function readDirectoryIfExists(dataRoot: string, dirPath: string) {
   try {
-    return JSON.parse(await readFile(filePath, "utf8")) as T;
+    if (await safeUiStat(dataRoot, dirPath) === null) return [];
+    return await readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }
 }
 
-async function readTextIfExists(filePath: string): Promise<string | null> {
+async function readJsonIfExists<T>(dataRoot: string, filePath: string): Promise<T | null> {
+  const text = await readTextIfExists(dataRoot, filePath);
+  if (text === null) return null;
   try {
+    return JSON.parse(text) as T;
+  } catch {
+    // Parser messages can echo sensitive artifact contents; report the filename only.
+    throw new Error(`Invalid JSON in ${filePath}.`);
+  }
+}
+
+async function readTextIfExists(dataRoot: string, filePath: string): Promise<string | null> {
+  try {
+    if (!await fileExists(dataRoot, filePath)) return null;
     return await readFile(filePath, "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
+async function fileExists(dataRoot: string, filePath: string): Promise<boolean> {
+  const info = await safeUiStat(dataRoot, filePath);
+  if (info === null) return false;
+  if (!info.isFile()) throw new Error(`Expected a regular file: ${filePath}`);
+  return true;
+}
+
+async function safeUiStat(dataRoot: string, targetPath: string): Promise<Stats | null> {
+  const root = path.resolve(dataRoot);
+  const relative = path.relative(root, path.resolve(targetPath));
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`UI artifact path is outside .traceback: ${targetPath}`);
   }
+  // Reject direct and parent links, including .traceback itself, even dangling links.
+  // These checks are not atomic with reads; concurrent filesystem mutation is not sandboxed.
+  let current = root;
+  let info: Stats | null = null;
+  for (const segment of ["", ...relative.split(path.sep).filter(Boolean)]) {
+    current = path.join(current, segment);
+    try {
+      info = await lstat(current);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    }
+    if (info.isSymbolicLink()) throw new Error(`UI refuses symbolic links in .traceback: ${current}`);
+  }
+  return info;
 }
 
 function buildSummary({
@@ -475,7 +563,7 @@ function buildWarnings({
   }
   if (candidates.length > 0 && candidates.every((candidate) => candidate.status === "candidate")) {
     warnings.push(
-      "All extracted candidates are still marked `candidate`; thread-aware outcome detection is a known quality gap.",
+      "No candidate has an inferred outcome. Same-thread replies or GitHub thread metadata may be unavailable; this alone does not indicate an extraction error.",
     );
   }
 
@@ -549,57 +637,49 @@ function parseReviewCommentId(candidate: FailureCandidate): number | null {
 function buildCandidateStatusEvidence(
   candidate: FailureCandidate,
   source: {
+    comment: NormalizedReviewComment | null;
     replies: NormalizedReviewComment[];
     thread: NormalizedReviewThread | null;
   },
 ): UiCandidateStatusEvidence {
-  const latestReply = source.replies.at(-1);
-  const latestReplyExcerpt = latestReply
-    ? truncateText(normalizeWhitespace(latestReply.body), 220)
+  const inference = source.comment
+    ? inferStatus(source.comment.body, source.replies.map((reply) => reply.body), source.thread)
     : null;
-  const threadResolved = source.thread?.isResolved ?? null;
-  const threadOutdated = source.thread?.isOutdated ?? null;
-
-  if (latestReplyExcerpt) {
-    return {
-      label: "Same-thread reply",
-      detail: `Latest reply from ${latestReply?.author ?? "unknown author"} supports status ${candidate.status}.`,
-      replyCount: source.replies.length,
-      latestReplyExcerpt,
-      threadResolved,
-      threadOutdated,
-    };
-  }
-
-  if (threadResolved) {
-    return {
-      label: "GitHub thread resolved",
-      detail: "No same-thread reply was imported, but the source review thread is marked resolved.",
-      replyCount: 0,
-      latestReplyExcerpt: null,
-      threadResolved,
-      threadOutdated,
-    };
-  }
-
-  if (threadOutdated) {
-    return {
-      label: "GitHub thread outdated",
-      detail: "No stronger reply evidence was imported, and the source review thread is marked outdated.",
-      replyCount: 0,
-      latestReplyExcerpt: null,
-      threadResolved,
-      threadOutdated,
-    };
-  }
-
+  const supportingReply = inference?.replyIndex != null ? source.replies[inference.replyIndex] : null;
+  const latestReply = source.replies.at(-1);
+  const basis = inference?.basis ?? "none";
+  const labels = {
+    reply: "Same-thread reply signal",
+    thread_resolved: "GitHub thread resolved (metadata only)",
+    thread_outdated: "GitHub thread outdated (metadata only)",
+    source: "Uncertainty in source finding",
+    none: "No outcome signal",
+  };
+  const details = {
+    reply: `Matching reply from ${supportingReply?.author ?? "unknown author"} infers ${inference?.status}. This is a text signal, not independent verification of a fix.`,
+    thread_resolved: "GitHub marks this thread resolved. No stronger reply signal was found; thread closure does not verify code correctness.",
+    thread_outdated: "GitHub marks this thread outdated. Changed code context does not verify a fix.",
+    source: "The source finding expresses uncertainty; no stronger outcome evidence was found.",
+    none: source.comment
+      ? "No outcome-bearing reply or thread state was found. Neutral replies do not confirm a fix."
+      : "The original review comment is unavailable; the stored status cannot be checked against thread evidence.",
+  };
+  const matchesStoredStatus = inference ? inference.status === candidate.status : null;
   return {
-    label: "Candidate extraction",
-    detail: candidate.notes[0] ?? "No thread outcome evidence was imported for this candidate.",
-    replyCount: 0,
-    latestReplyExcerpt: null,
-    threadResolved,
-    threadOutdated,
+    label: labels[basis],
+    detail: details[basis] + (matchesStoredStatus === false
+      ? ` Stored status is ${candidate.status}; current evidence infers ${inference?.status}. Re-run traceback extract to refresh candidates; historical runs remain unchanged.`
+      : ""),
+    basis,
+    inferredStatus: inference?.status ?? null,
+    matchesStoredStatus,
+    replyCount: source.replies.length,
+    supportingReplyExcerpt: supportingReply ? truncateText(normalizeWhitespace(supportingReply.body), 220) : null,
+    latestReplyExcerpt: latestReply && latestReply !== supportingReply
+      ? truncateText(normalizeWhitespace(latestReply.body), 220)
+      : null,
+    threadResolved: source.thread?.isResolved ?? null,
+    threadOutdated: source.thread?.isOutdated ?? null,
   };
 }
 
@@ -633,6 +713,9 @@ function toUiDraftRule(runId: string, rule: DraftRule): UiDraftRule {
     id: rule.id,
     title: rule.title ?? rule.id,
     rule: rule.rule ?? "",
+    learningScope: ["repo_specific", "general_engineering", "process_or_workflow"].includes(rule.learningScope)
+      ? rule.learningScope
+      : "unknown",
     confidence: rule.confidence ?? "unknown",
     sourcePrs: rule.sourcePrs ?? [],
   };
@@ -676,13 +759,14 @@ function htmlResponse(html: string): Response {
   });
 }
 
-function renderHtml(): string {
+export function renderHtml(): string {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Traceback Review UI</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
       color-scheme: light;
@@ -800,6 +884,7 @@ function renderHtml(): string {
 
     .overview {
       display: grid;
+      min-width: 0;
       gap: 14px;
     }
 
@@ -818,6 +903,8 @@ function renderHtml(): string {
 
     .stage {
       display: grid;
+      align-content: start;
+      justify-items: start;
       gap: 6px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -929,6 +1016,17 @@ function renderHtml(): string {
       gap: 10px;
     }
 
+    .run > *, .candidate > * {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .candidate-meta .pill {
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
     .label {
       color: var(--muted);
       font-size: 12px;
@@ -983,10 +1081,13 @@ function renderHtml(): string {
       text-align: center;
     }
 
-    @media (max-width: 760px) {
+    @media (max-width: 1100px) {
       .run, .candidate, .controls {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
+    }
+
+    @media (max-width: 760px) {
       h1 { font-size: 24px; }
     }
   </style>
@@ -1000,6 +1101,7 @@ function renderHtml(): string {
     </div>
   </header>
   <main>
+    <p>Repository totals across all runs. Candidates below are the current extracted corpus, not a historical run snapshot.</p>
     <section class="grid" id="summary"></section>
     <section class="warnings" id="warnings"></section>
     <section id="selected-run"></section>
@@ -1040,7 +1142,7 @@ function renderHtml(): string {
     function render() {
       const data = state.data;
       if (!state.selectedRunId || !data.runs.some((run) => run.runId === state.selectedRunId)) {
-        state.selectedRunId = data.runs[0]?.runId ?? null;
+        state.selectedRunId = data.defaultRunId;
       }
       document.getElementById("repo-root").textContent = data.repoRoot;
       document.getElementById("generated-at").textContent = "Generated " + formatDate(data.generatedAt);
@@ -1087,14 +1189,20 @@ function renderHtml(): string {
         return;
       }
 
-      const provider = run.provider ? run.provider : "none";
+      const latestRun = data.runs[0];
       container.innerHTML = \`
         <article class="card overview">
+          <label class="control">Inspect run
+            <select id="run-picker">\${data.runs.map((item) => \`
+              <option value="\${escapeHtml(item.runId)}" \${item.runId === run.runId ? "selected" : ""}>\${escapeHtml(runLabel(item) + " · " + item.runId)}</option>
+            \`).join("")}</select>
+          </label>
+          \${latestRun.runId !== run.runId ? \`<p>Viewing an older run. The latest run is \${escapeHtml(runLabel(latestRun))} (\${escapeHtml(latestRun.runId)}). Newer candidates are not included in this analysis.</p>\` : ""}
           <div class="overview-head">
             <div>
-              <span class="label">Selected run</span>
-              <h2>\${escapeHtml(run.runId)}</h2>
-              <p>Mode \${escapeHtml(run.mode)} · Provider \${escapeHtml(provider)} · \${escapeHtml(formatDate(run.createdAt))}</p>
+              <span class="label">Selected analysis run</span>
+              <h2>\${escapeHtml(runLabel(run))}</h2>
+              <p class="value">\${escapeHtml(formatDate(run.createdAt))} · <code>\${escapeHtml(run.runId)}</code></p>
             </div>
             <div>
               <span class="label">Provider output</span><br>
@@ -1110,24 +1218,33 @@ function renderHtml(): string {
             \${metric("Rule decisions", run.ruleDecisions)}
             \${metric("Exported rules", run.exportedRules)}
           </div>
-          <div>
-            <h3>Pipeline stages</h3>
+          <details \${run.hasAnalysisOutput ? "" : "open"}>
+            <summary>Pipeline stages and next steps</summary>
             <div class="stage-grid">\${stageCards(data.summary, run)}</div>
-          </div>
+          </details>
         </article>
       \`;
+      container.querySelector("#run-picker").addEventListener("change", (event) => {
+        state.selectedRunId = event.target.value;
+        render();
+      });
+    }
+
+    function runLabel(run) {
+      return (run.mode === "dry-run" ? "Dry run" : run.provider || run.mode) + " · " + run.failureCandidateCount + " candidates";
     }
 
     function renderRuns(runs) {
       const container = document.getElementById("runs");
-      container.innerHTML = "<h2>Runs overview</h2><p class='intro'>Each row is an analysis run. Select a run to inspect its clusters, decisions, rules, and export output.</p>" + (runs.length ? \`
+      container.innerHTML = "<h2>Runs overview</h2><p class='intro'>Newest first. Initially selects the latest provider run with usable analysis output, or the latest run if none exists. Select any run to inspect its artifacts.</p>" + (runs.length ? \`
         <div class="list">
           \${runs.map((run) => \`
             <button type="button" class="run-select" data-run-id="\${escapeHtml(run.runId)}" aria-current="\${String(run.runId === state.selectedRunId)}">
               <span class="run">
                 <span>
-                  <strong>\${escapeHtml(run.runId)}</strong><br>
-                  <span class="value">\${escapeHtml(formatDate(run.createdAt))}</span>
+                  <strong>\${escapeHtml(runLabel(run))}</strong><br>
+                  <span class="value">\${escapeHtml(formatDate(run.createdAt))}</span><br>
+                  <code class="value">\${escapeHtml(run.runId)}</code>
                 </span>
                 \${field("Mode", run.mode)}
                 \${field("Candidates", run.failureCandidateCount)}
@@ -1154,7 +1271,7 @@ function renderHtml(): string {
     function renderCandidates(candidates, statusCounts) {
       const container = document.getElementById("candidates");
       const filteredCandidates = sortCandidates(filterCandidates(candidates));
-      container.innerHTML = "<h2>Failure candidates</h2><p class='intro'>These are deterministic inputs extracted from imported PR evidence. They are candidates, not final confirmed failures.</p>" + renderStatusDistribution(statusCounts) + renderCandidateControls(candidates, filteredCandidates.length) + (filteredCandidates.length ? \`
+      container.innerHTML = "<h2>Failure candidates — current corpus</h2><p class='intro'>These candidates reflect the latest extraction, independent of the selected analysis run. Extraction confidence is not confidence that a fix worked.</p>" + renderStatusDistribution(statusCounts) + renderCandidateControls(candidates, filteredCandidates.length) + (filteredCandidates.length ? \`
         <div class="list">
           \${filteredCandidates.map((candidate) => \`
             <article class="card candidate">
@@ -1180,7 +1297,9 @@ function renderHtml(): string {
                 <span class="label">Status evidence</span>
                 <strong>\${escapeHtml(candidate.statusEvidence.label)}</strong>
                 <span class="value">\${escapeHtml(candidate.statusEvidence.detail)}</span>
-                \${candidate.statusEvidence.latestReplyExcerpt ? \`<blockquote>\${escapeHtml(candidate.statusEvidence.latestReplyExcerpt)}</blockquote>\` : ""}
+                \${candidate.statusEvidence.matchesStoredStatus === false ? statusPill("Stored status differs", "warn") : ""}
+                \${candidate.statusEvidence.supportingReplyExcerpt ? \`<span class="label">Matching reply</span><blockquote>\${escapeHtml(candidate.statusEvidence.supportingReplyExcerpt)}</blockquote>\` : ""}
+                \${candidate.statusEvidence.latestReplyExcerpt ? \`<span class="label">Latest reply (context only)</span><blockquote>\${escapeHtml(candidate.statusEvidence.latestReplyExcerpt)}</blockquote>\` : ""}
                 <span class="label">\${escapeHtml(threadState(candidate))}</span>
               </div>
             </article>
@@ -1306,6 +1425,7 @@ function renderHtml(): string {
         candidate.status,
         candidate.statusEvidence.label,
         candidate.statusEvidence.detail,
+        candidate.statusEvidence.supportingReplyExcerpt,
         candidate.statusEvidence.latestReplyExcerpt,
         ...(candidate.detectedAgentMarkers ?? []),
         ...(candidate.notes ?? []),
@@ -1403,7 +1523,7 @@ function renderHtml(): string {
           <article class="card run">
             <div>
               <h3>\${escapeHtml(run.runId)}</h3>
-              <p>\${run.warnings.length ? escapeHtml(run.warnings.join(" ")) : "No export warnings."}</p>
+              <p>\${run.warnings.length ? escapeHtml(run.warnings.join(" ")) : exportItem ? "No export warnings." : "No export has been generated for this run."}</p>
             </div>
             \${field("Draft rules", run.draftRules)}
             \${field("Rule decisions", run.ruleDecisions)}
@@ -1423,6 +1543,7 @@ function renderHtml(): string {
               <h3>\${escapeHtml(rule.title)}</h3>
               <p>\${escapeHtml(rule.rule)}</p>
               \${field("Run", rule.runId)}
+              \${field("Learning scope", rule.learningScope.replaceAll("_", " "))}
               \${field("Confidence", rule.confidence)}
             </article>
           \`).join("")}
@@ -1473,24 +1594,27 @@ function renderHtml(): string {
     }
 
     function stageCards(summary, run) {
+      const analysisReady = run.hasProviderOutput && run.hasAnalysisOutput;
       return [
-        stage("Import", summary.importedPrs > 0, summary.importedPrs + " PR records", "traceback import --prs <number>"),
-        stage("Extract", summary.failureCandidates > 0, summary.failureCandidates + " candidates", "traceback extract"),
-        stage("Analyze", run.hasInput && run.hasPrompt, run.hasProviderOutput ? "provider output present" : "input and prompt only", "traceback analyze --provider openai"),
-        stage("Review", run.reviewDecisions > 0, run.reviewDecisions + " decisions", "traceback review --run " + run.runId + " --policy conservative"),
-        stage("Draft rules", run.draftRules > 0, run.draftRules + " draft rules", "traceback rules --run " + run.runId),
-        stage("Rule review", run.ruleDecisions > 0, run.ruleDecisions + " rule decisions", "traceback rules review --run " + run.runId + " --policy conservative"),
-        stage("Export", run.exportItem !== null, run.exportedRules + " exported rules", "traceback rules export --run " + run.runId + " --target agents-md"),
+        stage("Import (current corpus)", summary.importedPrs > 0, summary.importedPrs + " PR records", "traceback import --prs <number>"),
+        stage("Extract (current corpus)", summary.failureCandidates > 0, summary.failureCandidates + " candidates", "traceback extract", summary.importedPrs > 0 ? "" : "Import PR records first."),
+        stage("Analyze", analysisReady,
+          analysisReady ? "provider analysis available" : "Prepared or incomplete; provider analysis has not completed. Running the command sends current candidates to OpenAI and creates a NEW run. Select that new run before review.",
+          "traceback analyze --provider openai", summary.failureCandidates > 0 ? "" : "Extract candidates first."),
+        stage("Review", run.hasReviewOutput, run.reviewDecisions + " decisions", "traceback review --run " + run.runId + " --policy conservative", analysisReady ? "" : "Requires provider analysis for this run."),
+        stage("Draft rules", run.hasDraftRules, run.draftRules + " draft rules", "traceback rules --run " + run.runId, run.hasReviewOutput ? "" : "Requires review decisions for this run."),
+        stage("Rule review", run.hasRuleDecisions, run.ruleDecisions + " rule decisions", "traceback rules review --run " + run.runId + " --policy conservative", run.hasDraftRules ? "" : "Requires draft rules for this run."),
+        stage("Export", run.exportItem !== null, run.exportedRules + " exported rules", "traceback rules export --run " + run.runId + " --target agents-md", run.hasRuleDecisions ? "" : "Review rules before exporting."),
       ].join("");
     }
 
-    function stage(label, isPresent, detail, command) {
+    function stage(label, isPresent, detail, command, blockedReason = "") {
       return \`
         <div class="stage">
           <strong>\${escapeHtml(label)}</strong>
-          \${statusPill(isPresent ? "present" : "missing", isPresent ? "good" : "warn")}
+          \${statusPill(isPresent ? "present" : blockedReason ? "blocked" : "missing", isPresent ? "good" : "warn")}
           <span class="value">\${escapeHtml(detail)}</span>
-          \${isPresent ? "" : \`<code>\${escapeHtml(command)}</code>\`}
+          \${isPresent ? "" : blockedReason ? \`<p>\${escapeHtml(blockedReason)}</p>\` : \`<code>\${escapeHtml(command)}</code>\`}
         </div>
       \`;
     }
@@ -1522,13 +1646,18 @@ function renderHtml(): string {
       if (!entries.length) {
         return "";
       }
+      const candidates = state.data.candidates;
+      const replySignals = candidates.filter((candidate) => candidate.statusEvidence.basis === "reply").length;
+      const metadataOnly = candidates.filter((candidate) => candidate.statusEvidence.basis.startsWith("thread_")).length;
+      const mismatches = candidates.filter((candidate) => candidate.statusEvidence.matchesStoredStatus === false).length;
       return \`
         <article class="card row">
           <h3>Status distribution</h3>
-          <p>Thread-aware status detection uses same-thread replies and GitHub review-thread state. Superseded means the source thread is outdated without stronger outcome evidence.</p>
+          <p>Stored outcomes inferred from replies or thread metadata; resolved does not mean independently verified. Superseded means outdated without a stronger signal. See each candidate’s evidence source below.</p>
           <div class="tabs">
             \${entries.map(([status, count]) => statusPill(status + ": " + count, statusTone(status))).join("")}
           </div>
+          <p>Current evidence: \${replySignals} reply signals · \${metadataOnly} metadata only · \${candidates.length - replySignals - metadataOnly} source-only or unavailable · \${mismatches} stored-status mismatches.</p>
         </article>
       \`;
     }
@@ -1562,7 +1691,14 @@ function renderHtml(): string {
     }
 
     function link(href, label) {
-      return \`<a href="\${escapeHtml(href)}" target="_blank" rel="noreferrer">\${escapeHtml(label)}</a>\`;
+      try {
+        if (typeof href !== "string" || !/^https?:[/][/]/i.test(href)) return escapeHtml(label);
+        const url = new URL(href);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return escapeHtml(label);
+        return \`<a href="\${escapeHtml(url.href)}" target="_blank" rel="noopener noreferrer">\${escapeHtml(label)}</a>\`;
+      } catch {
+        return escapeHtml(label);
+      }
     }
 
     function empty(message) {

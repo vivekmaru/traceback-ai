@@ -1,6 +1,6 @@
 # Traceback Roadmap
 
-Last updated: 2026-05-22
+Last updated: 2026-09-21
 
 This roadmap is the stable product direction for Traceback. Use
 `docs/execution-state.md` for the current operational milestone and live handoff
@@ -15,6 +15,10 @@ eventually agent transcripts.
 
 The product should stay local-first until review quality, redaction, and user
 control are proven.
+
+The phased implementation and acceptance plan is in `docs/improvement-plan.md`:
+finish honest inspection, establish a held-out quality baseline, return to local
+session capture, then consider controlled application and broader surfaces.
 
 ## Strategic Stance
 
@@ -76,7 +80,7 @@ Remaining quality gaps:
 
 ## Phase 2: Make Review Usable
 
-Status: next.
+Status: initial read-only UI complete; usability and evidence-attribution follow-up in progress.
 
 Milestone: tiny local read-only review UI.
 
@@ -134,9 +138,16 @@ Milestones:
    repo-specific agent guidance and broader engineering/process lessons are
    preserved separately.
 5. Candidate review UI polish: filters, search, sorting, and status evidence.
-6. Evidence quality scoring.
-7. Redaction checks for shareable/exportable artifacts.
-8. External repo validation, after the local loop feels sharper and less noisy.
+   Initial slice implemented; provider-first inspection and shared inference
+   provenance are the next refinement.
+6. Held-out external evaluation of extraction, category, and status quality.
+   Separate explicit replies from metadata-only outcomes; a high resolved ratio
+   alone is not evidence of misclassification.
+7. Evidence tiers or calibrated scoring only after labeled evaluation establishes
+   their meaning, with useful-rule acceptance and review time as product metrics.
+8. Redaction checks before provider-backed validation or shareable artifacts.
+   Provider runs require explicit data-sharing approval; a local API key alone
+   does not authorize uploads.
 
 Outcome/status detection should distinguish:
 

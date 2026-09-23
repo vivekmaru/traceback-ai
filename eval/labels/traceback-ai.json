@@ -1,0 +1,1570 @@
+{
+  "repo": "traceback-ai",
+  "labeledAt": "2026-09-23T03:05:16.117416Z",
+  "labeler": "blind agent review; pending human adjudication",
+  "entries": [
+    {
+      "key": "pr_body:1",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty PR body; no finding."
+    },
+    {
+      "key": "review_comment:3253116729",
+      "isFinding": true,
+      "category": "pagination_boundary_error",
+      "status": "resolved",
+      "note": "Import silently caps the requested PR count at one page. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253116731",
+      "isFinding": true,
+      "category": "environment_config_contract_violation",
+      "status": "resolved",
+      "note": "Unix-only post-build operation breaks the documented Windows build flow. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253129854",
+      "isFinding": true,
+      "category": "pagination_boundary_error",
+      "status": "resolved",
+      "note": "Changing page size shifts API offsets, duplicating imports and omitting PRs. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review:4303932421",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4303944252",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "pr_body:2",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty PR body; no finding."
+    },
+    {
+      "key": "review_comment:3253844128",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Unrelated PR discussion assigns outcomes to independent findings. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253844130",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Negated fix replies are mistaken for acknowledgements. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253844132",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Neutral domain vocabulary creates false findings; taxonomy lacks an extraction-precision category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253844135",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Negated resolution language incorrectly closes findings. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253851573",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Discarding reply context prevents documented discussion outcomes from reaching statuses. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253891467",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Cross-source numeric ID matches attach unrelated replies and corrupt outcomes. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253966074",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Unversioned imported-schema changes misread old replies as roots; no dedicated schema-compatibility category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253966076",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Negated acknowledgement terms incorrectly mark findings accepted. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253966078",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Aggregated historical replies override later fix confirmations. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253983498",
+      "isFinding": true,
+      "category": "status_inference_error",
+      "status": "resolved",
+      "note": "Broad dismissal terms misread positive fix confirmations as rejection. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3253983499",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Ordinary negative phrasing in approvals creates false findings; no extraction-precision category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review:4304618964",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4304625108",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4304661281",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4304738832",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4304760416",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "pr_body:3",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty PR body; no finding."
+    },
+    {
+      "key": "pr_body:4",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty PR body; no finding."
+    },
+    {
+      "key": "review_comment:3254134702",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "A new PR-body gate discards previously supported concrete findings; no extraction-recall category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254134704",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Upload and queue vocabulary incorrectly triggers randomness classification; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254275639",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Extra signal requirements suppress legitimate PR-body failures; no extraction-recall category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254275640",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Iteration vocabulary mislabels correctness defects as performance issues; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254275641",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Predictability wording misclassifies unrelated defects as entropy problems; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254333516",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Loading vocabulary incorrectly classifies functional failures as performance defects; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254333519",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Identifier vocabulary assigns a randomness category without entropy evidence; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254333523",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Scheduler vocabulary sends correctness defects to the performance bucket; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3254333526",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Batching vocabulary mislabels non-performance defects; no category-assignment error enum. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review:4304907797",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4305059366",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4305149996",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "pr_body:5",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Feature and validation summary; expected missing-key rejection is not a defect report."
+    },
+    {
+      "key": "pr_body:6",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty PR body; no finding."
+    },
+    {
+      "key": "review_comment:3258907112",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Multiple warnings for one record generate duplicate decision identifiers. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3258907116",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Records without candidate references disappear from downstream review artifacts. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3258907129",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Unchecked CLI path segments allow review writes outside the artifact boundary. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3258907135",
+      "isFinding": true,
+      "category": "security_privacy_regression",
+      "status": "resolved",
+      "note": "Unchecked run paths allow rule reads and writes outside intended directories. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259103555",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Partially clustered records incorrectly include covered candidates in gap decisions; no review-grouping category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259103570",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Duplicate model cluster identifiers propagate ambiguous review and rule IDs. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259103576",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Lookup by duplicated enrichment ID silently drops later records. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259103585",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Repeated candidate ownership overwrites enrichment provenance and hides contradictory evidence. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259678765",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Generated duplicate-cluster suffixes collide with existing source identifiers. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259678770",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Singleton disambiguation suffixes still produce duplicate decision IDs. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259678776",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Sourceless record suffixes collide with independently supplied IDs. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3259678784",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Duplicate decision identifiers propagate directly into non-unique draft rule IDs. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review:4310158610",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4310379725",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4311042930",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "pr_body:7",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Feature summary, test checklist, and safety boundaries; no concrete broken behavior identified."
+    },
+    {
+      "key": "pr_body:8",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Describes new review/export capabilities and validation, not an actual defect."
+    },
+    {
+      "key": "issue_comment:4518556032",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "issue_comment:4518593734",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Request to continue review; no finding."
+    },
+    {
+      "key": "issue_comment:4518595117",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "issue_comment:4518636711",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "issue_comment:4518713652",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Request to continue review; no finding."
+    },
+    {
+      "key": "issue_comment:4518715065",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "issue_comment:4518799643",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Request to continue review; no finding."
+    },
+    {
+      "key": "issue_comment:4518801370",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "review_comment:3288169757",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Unchecked duplicate IDs in editable decisions silently discard review intent during export. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288169761",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Malformed approved decisions export empty or untraceable instructions without validation. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288234511",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Export accepts decisions from a different run and corrupts provenance. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288234520",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Manual normalization silently rebinds foreign-run decisions without identity validation. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288234524",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Unknown manual rule references are accepted and cause intended rules to disappear from export. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288311318",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Inconsistent editable decision fields override accepted-state semantics during export. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288311321",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Unchecked draft run identity contaminates newly normalized decisions and exports. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288311326",
+      "isFinding": true,
+      "category": "user_input_loss",
+      "status": "resolved",
+      "note": "Normalization undoes deliberate manual provenance removals by restoring draft references. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3288311329",
+      "isFinding": true,
+      "category": "human_editable_artifact_validation",
+      "status": "resolved",
+      "note": "Invalid manual decision values are silently coerced, changing export eligibility. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review:4345187368",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4345261672",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4345347849",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "pr_body:9",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Capability summary and verification results; does not identify concrete broken behavior."
+    },
+    {
+      "key": "review_comment:3292239387",
+      "isFinding": true,
+      "category": "context_omission",
+      "status": "resolved",
+      "note": "Fatal optional-metadata errors violate the stated nonblocking import contract. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3292277986",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Later API failures erase already fetched evidence; this is recovery/data-retention logic, not an offset-boundary bug. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3292277990",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "UI claims evidence exists from a manifest path without checking the file; no artifact-presence reporting category. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review_comment:3292277992",
+      "isFinding": true,
+      "category": "identifier_collision_record_loss",
+      "status": "resolved",
+      "note": "Lossy numeric ID conversion drops comment references and their thread evidence. Thread marked resolved; no replies."
+    },
+    {
+      "key": "review:4349960253",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350004692",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "pr_body:10",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Operational documentation and stable-run summary, not a substantive defect report."
+    },
+    {
+      "key": "pr_body:11",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Taxonomy feature summary and reported verification counts; no concrete defect explained."
+    },
+    {
+      "key": "issue_comment:4525503231",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "issue_comment:4525577649",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Service usage-limit notice; not a project defect finding."
+    },
+    {
+      "key": "issue_comment:4526754115",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Review request only; no finding."
+    },
+    {
+      "key": "review_comment:3292756752",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Summary suppression drops previously supported standalone findings; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292756754",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Narrow failure wording suppresses concrete upload-failure summaries; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292756757",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Broad overwrite vocabulary assigns an unrelated collision category; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292756758",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Summary filtering loses supported security-related findings; the defect is extraction recall, not an actual leak. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292776354",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Summary filtering discards explicit rendering and exception failures; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292776356",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Run identifier mentions bias category ties toward artifact validation; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292787063",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Contracted failure wording is excluded from PR-summary extraction; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292787064",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic coercion wording misassigns artifact-validation categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292787065",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "A threading field name causes category errors without outcome inference; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292787067",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "URL page vocabulary incorrectly assigns import-boundary categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292787068",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Summary filtering omits explicit breakage wording and loses findings; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292796442",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Unqualified collision wording mislabels unrelated domains as record loss; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292796443",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Negation vocabulary assigns an outcome-inference category to unrelated defects; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292796444",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic pagination vocabulary falsely assigns import-boundary categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292796445",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Manual-decision UI vocabulary misclassifies unrelated issues as artifact validation; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292796446",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic thread UI language falsely assigns an outcome-inference category; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811626",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic suffix terminology incorrectly assigns collision categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811635",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Page-size parameter mentions alone misclassify unrelated issues as boundary errors; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811639",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Editability descriptions bias unrelated UI defects toward artifact validation; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811644",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "A generic numeric threshold wrongly assigns import-pagination categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811647",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Requested-PR vocabulary misclassifies ordinary product feedback as boundary errors; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811653",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Human-editing vocabulary alone misroutes unrelated defects into artifact validation; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292811657",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Enrichment-record mentions produce collision categories without loss evidence; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292830393",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Ordinary unresolved-bug wording wrongly assigns an inference-error category; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292830395",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Candidate-reference field mentions incorrectly contribute collision category scores; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292830397",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Whole-PR UI context is miscategorized as outcome inference; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292830400",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic truncation wording misassigns import-boundary categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292830404",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Edited-field vocabulary mislabels unrelated parsing issues as artifact validation; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292830405",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Reply-list UI vocabulary incorrectly triggers an outcome-inference category; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292847679",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Artifact names alone misclassify non-validation failures; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292847680",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "A mapping function name incorrectly biases unrelated defects toward record loss; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292847682",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Added review-context guards still misclassify sidebar failures as inference errors; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3292847683",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Requested-PR display truncation still triggers an import-boundary category; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293601453",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Malformed-input failure summaries remain incorrectly suppressed; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293618383",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Template preambles bypass summary suppression and create false findings; no extraction-precision enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293618384",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Duplicate-ID vocabulary assigns record-loss categories without loss behavior; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293618386",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic missing-data feature descriptions bypass filtering as false findings; no extraction-precision enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293618388",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Unknown-rule references misclassify non-validation feedback; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293628750",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic record nouns still allow non-loss issues into collision categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293628751",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Request vocabulary around page-size parameters mislabels non-boundary issues; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293628753",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Run and export nouns still trigger artifact-validation categories without validation behavior; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293628757",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic identifier collisions are miscategorized as record-loss defects; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293628758",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Security vocabulary lets benign feature summaries become false findings; no extraction-precision enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293628759",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Request vocabulary still makes ordinary pagination UI issues score as import-boundary failures; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293643990",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "PR-list vocabulary mislabels UI selection bugs as import-boundary errors; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293643991",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Record-view layout collision wording incorrectly implies record loss; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293643992",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Thread schema wording incorrectly assigns outcome-inference categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293643993",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Concise parser-failure summaries are wrongly excluded; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293643995",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Generic invalid UI-state wording misclassifies issues as artifact validation; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655460",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Manual-decision and export nouns still misassign artifact-validation categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655462",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Record-table overwrite wording misclassifies UI defects as record loss; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655463",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Selection loss near record vocabulary is incorrectly categorized as record loss; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655464",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Identifier suffix terminology sends accessibility defects to the collision bucket; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655465",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Page URLs and generic pagination language falsely imply import-boundary failures; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655466",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Decision-state tab vocabulary assigns artifact-validation categories to UI crashes; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293655468",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Page-size control vocabulary wrongly assigns import-boundary categories; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293665772",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Editable-artifact nouns still misclassify UI crashes as validation errors; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293665774",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Disambiguation wording allegedly mislabels tooltip issues as record loss; finding concerns taxonomy, not actual lost records. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293665775",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Incorrect word boundaries miss normal disambiguation forms and reduce category recall; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293665777",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "Alternative parser-failure phrasing is incorrectly suppressed in summaries; no extraction-recall enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review_comment:3293665778",
+      "isFinding": true,
+      "category": "unknown",
+      "status": "resolved",
+      "note": "UI label truncation still incorrectly scores as an import-boundary failure; no category-assignment error enum. Same-thread reply explicitly confirms a fix."
+    },
+    {
+      "key": "review:4350669204",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350699948",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350699963",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350699985",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350700006",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350714694",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350717797",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350717808",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350725082",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350729012",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350729024",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350729034",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350729058",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350729077",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350734125",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350740008",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350740030",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350740059",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350740083",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350740199",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350750113",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350757840",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350757957",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350758043",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350758085",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350758122",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350758162",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350758185",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350774524",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350783449",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350783460",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350783468",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350783475",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350783493",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350783505",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350790310",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4350793134",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350793151",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350793163",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4350793182",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351530497",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4351537292",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351543763",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4351546285",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351546286",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351546287",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351546288",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351551770",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4351559355",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351559356",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351559357",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351559358",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351559359",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351559360",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351564015",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4351568128",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351568131",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351568132",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351568133",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351568134",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351576669",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4351580301",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351580304",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351580307",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351580308",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351580309",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351580312",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351580315",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351589535",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Automated review boilerplate; no substantive finding in this body."
+    },
+    {
+      "key": "review:4351593571",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351593572",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351593573",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351593574",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    },
+    {
+      "key": "review:4351593582",
+      "isFinding": false,
+      "category": null,
+      "status": null,
+      "note": "Empty review body; findings or fixes in separate comments are not inherited."
+    }
+  ],
+  "schemaVersion": 1,
+  "snapshotHash": "08e5a0b091ca14faefbedb5eef8f7bbbb1b8cf4487e93a4aad5854fea6249e52"
+}

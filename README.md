@@ -26,38 +26,40 @@ bun install
 
 ## Usage
 
-Run commands from inside the repository you want to inspect.
+This is a source-built local preview, not a published production package. Build
+from the Traceback checkout after setup:
 
 ```bash
-bun run traceback init
-bun run traceback import --prs 5
-bun run traceback report
-bun run traceback extract
-bun run traceback analyze --dry-run
-bun run traceback analyze --provider openai
-bun run traceback review --run <runId> --policy conservative
-bun run traceback rules --run <runId>
-bun run traceback rules review --run <runId> --policy conservative
-bun run traceback rules export --run <runId> --target agents-md
-bun run traceback ui
+bun run build                  # creates executable dist/cli.js
+./dist/cli.js --help            # lists available commands
+./dist/cli.js --version         # prints 0.1.0
 ```
 
-After building, the bundled CLI is available at `dist/cli.js`:
+To inspect another repository, invoke this bundle by its absolute path **while
+your shell is inside the target git repository**. In the examples below,
+`traceback` means that executable (or a shell alias pointing to it). The
+`bun run traceback` shortcut works only in the Traceback checkout, not in an
+arbitrary target repository. Bun must remain installed to run the bundle.
 
-```bash
-bun run build
-./dist/cli.js init
-./dist/cli.js import --prs 5
-./dist/cli.js report
-./dist/cli.js extract
-./dist/cli.js analyze --dry-run
-./dist/cli.js analyze --provider openai
-./dist/cli.js review --run <runId> --policy conservative
-./dist/cli.js rules --run <runId>
-./dist/cli.js rules review --run <runId> --policy conservative
-./dist/cli.js rules export --run <runId> --target agents-md
-./dist/cli.js ui
-```
+Start with `traceback init`, then `traceback import --prs 5` (GitHub read access),
+`traceback report`, `traceback extract`, and `traceback analyze --dry-run`.
+These create local artifacts without sending evidence to an AI provider. Open
+`traceback ui` to inspect them. Import reports its PR count; extraction reports
+its candidate count; dry-run prints the new analysis-run directory.
+
+**Stop before provider mode unless you approve sharing the selected evidence.**
+Review the generated `input.json` and `prompt.md` first. Optional provider mode
+requires `OPENAI_API_KEY` and sends current candidates to OpenAI; it creates a
+new run rather than replaying the inspected dry run.
+
+Review, rule generation, and export require a completed provider run. Replace
+`<runId>` in their command examples with the directory name printed by that
+provider analysis, not a dry-run ID. These downstream stages are local-only and
+write proposals; they do not apply instructions to your repository.
+
+The bundled offline flow is exercised in `tests/cli-smoke.test.ts` from a fresh
+repository using synthetic provider output. No live provider call is made by
+that test.
 
 ## Commands
 
@@ -117,13 +119,10 @@ export GH_TOKEN="$(gh auth token)"
 traceback import --prs 20
 ```
 
-When running the built CLI directly:
-
-```bash
-gh auth status
-export GITHUB_TOKEN="$(gh auth token)"
-/Users/vivek/dev/agentfail/dist/cli.js import --prs 20
-```
+When running the built CLI directly, use the absolute `dist/cli.js` path from
+your Traceback checkout in place of `traceback`, keeping the target repository
+as your working directory. Prefer supplying tokens only to the import process
+rather than persisting them in repository files.
 
 If import returns a GitHub 404 for a repository that exists, the token may be
 missing access to a private repository. Re-run `gh auth status`, export
@@ -315,8 +314,8 @@ The current conservative policy is intentionally cautious:
 - Missing or inconsistent source references become `needs_review`.
 - Ambiguous items default to `needs_review` or `needs_validation`, not accepted.
 
-Rules are not generated yet. Future rule generation should consume only reviewed
-and accepted decisions.
+This review command does not generate rules; the separate `rules` command
+consumes eligible reviewed decisions.
 
 ### `traceback rules --run <runId>`
 
@@ -460,7 +459,9 @@ current repository:
 traceback ui
 ```
 
-By default, the UI binds to `127.0.0.1:4317`. You can override the host or port:
+By default, the UI binds to `127.0.0.1:4317`. Only loopback hosts (`127.0.0.1`,
+`localhost`, or `::1`) are accepted; this is not a LAN or hosted server. You can
+choose another local port:
 
 ```bash
 traceback ui --host 127.0.0.1 --port 4321
@@ -483,10 +484,15 @@ Safety boundaries:
 - The UI does not upload data.
 - The UI does not modify root instruction files or source files.
 - The UI does not apply proposed rules automatically.
+- Requests must target a loopback authority on the server port. Foreign origins
+  and non-read methods are rejected; artifact responses are not cached.
+- The UI rejects symlinks under `.traceback/`, including the data directory
+  itself, and unsafe manifest filenames. This is not a sandbox against
+  concurrent local filesystem mutation or other software running as you.
 
 ## Privacy Model
 
-Traceback AI is local-only:
+Traceback AI is local-first, with an explicit provider-upload mode:
 
 - Raw data stays under `.traceback/`.
 - `traceback init`, `traceback import`, `traceback report`, `traceback extract`,
@@ -521,6 +527,13 @@ bun run build
 
 ## Known Limitations
 
+- Evaluation labels remain agent-reviewed drafts pending human adjudication;
+  provisional holdout precision is 85% and recall is 50%, with category accuracy
+  only 35.3% on detected findings. This is not production-readiness evidence.
+- Clean build and portable-tarball execution were verified on macOS arm64 with
+  Bun 1.3.6. Linux, Windows, and installed-package workflows remain unverified.
+- Persisted candidate input is validated before analysis; full runtime schemas
+  for every historical UI artifact remain incomplete.
 - GitHub API access is read-only and best-effort.
 - Large repositories may hit unauthenticated rate limits without a token.
 - GitHub review-thread metadata requires `GITHUB_TOKEN` or `GH_TOKEN`; without a
@@ -538,10 +551,11 @@ bun run build
 
 ## Next Steps
 
-- Improve candidate review UI filters, search, sorting, and status evidence.
-- Add evidence quality scoring after candidate review is easier to inspect.
-- Add editable rule review only after the read-only UI proves useful.
-- Add a guarded apply workflow only after proposed artifacts prove useful in
-  manual review.
-- Validate on an external repository after the local loop feels sharper and less
-  noisy.
+- Human-adjudicate the provisional three-repository evaluation before treating
+  metrics as release gates; see [eval/README.md](eval/README.md).
+- Improve extraction recall and category accuracy on development sets, without
+  tuning against held-out errors. Defer numerical evidence scoring.
+- Validate live provider behavior only with explicit data-sharing approval, and
+  verify supported platforms before expanding distribution.
+- Keep editable review, session capture, and guarded apply workflows deferred
+  until the read-only evidence loop is trustworthy.
